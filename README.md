@@ -56,6 +56,8 @@ Construir um backend Node.js + Express + TypeScript + PostgreSQL para gestão de
 4.9)Doc: OpenAPI 3.0 (Swagger)
 
 5)Estrutura de pastas
+
+```
 chamadaweb/
 └─ backend/
    ├─ src/
@@ -110,6 +112,7 @@ chamadaweb/
    ├─ package.json
    ├─ tsconfig.json
    └─ README.md
+```
 
 
 
