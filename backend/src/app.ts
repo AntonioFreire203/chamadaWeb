@@ -1,15 +1,4 @@
-import express from "express";
-import helmet from "helmet";
-import cors from "cors";
-import { env } from "./config/env";
+//declara uma varivel em typesccript
+let numero: number = 5;
 
-const app = express();
-app.use(express.json());
-app.use(cors());
-app.use(helmet());
-
-app.get("/health", (_req, res) => {
-  res.json({ name: env.NAME, status: "ok", time: new Date().toISOString() });
-});
-
-export default app;
+console.log("O número é: " + numero);
