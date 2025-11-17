@@ -3,11 +3,18 @@ import helmet from "helmet";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import { randomUUID } from "crypto";
+import swaggerUi from "swagger-ui-express";
+import YAML from "yamljs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { env } from "./config/env.js";
 import { router } from "./routes/index.js";
 import { AppError } from "./utils/errors.js";
 import { logger } from "./utils/logger.js";
 import type { Request, Response, NextFunction } from "express";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 
@@ -35,6 +42,20 @@ app.use(
     },
   })
 );
+
+// Swagger UI (apenas em desenvolvimento)
+if (env.NODE_ENV === "development") {
+  try {
+    const swaggerDocument = YAML.load(join(__dirname, "docs", "openapi.yaml"));
+    app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
+      customCss: '.swagger-ui .topbar { display: none }',
+      customSiteTitle: "ChamadaWeb API Docs"
+    }));
+    logger.info("📚 Swagger UI disponível em /docs");
+  } catch (error) {
+    logger.warn({ err: error }, "Não foi possível carregar Swagger UI");
+  }
+}
 
 // Rotas da API
 app.use(env.API_PREFIX, router);
