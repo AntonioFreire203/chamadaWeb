@@ -7,6 +7,16 @@ export type Role = "ADMIN" | "COORDENADOR" | "PROFESSOR" | "ALUNO";
 export const Actions = {
   USER_READ_SELF: "USER_READ_SELF",
 
+  ALUNO_CREATE: "ALUNO_CREATE",
+  ALUNO_READ: "ALUNO_READ",
+  ALUNO_UPDATE: "ALUNO_UPDATE",
+  ALUNO_DELETE: "ALUNO_DELETE",
+
+  PROFESSOR_CREATE: "PROFESSOR_CREATE",
+  PROFESSOR_READ: "PROFESSOR_READ",
+  PROFESSOR_UPDATE: "PROFESSOR_UPDATE",
+  PROFESSOR_DELETE: "PROFESSOR_DELETE",
+
   TURMA_CREATE: "TURMA_CREATE",
   TURMA_LIST: "TURMA_LIST",
   TURMA_GET: "TURMA_GET",
@@ -28,6 +38,14 @@ export type Action = (typeof Actions)[keyof typeof Actions];
 export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
   ADMIN: [
     Actions.USER_READ_SELF,
+    Actions.ALUNO_CREATE,
+    Actions.ALUNO_READ,
+    Actions.ALUNO_UPDATE,
+    Actions.ALUNO_DELETE,
+    Actions.PROFESSOR_CREATE,
+    Actions.PROFESSOR_READ,
+    Actions.PROFESSOR_UPDATE,
+    Actions.PROFESSOR_DELETE,
     Actions.TURMA_CREATE,
     Actions.TURMA_LIST,
     Actions.TURMA_GET,
@@ -43,6 +61,12 @@ export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
   ],
   COORDENADOR: [
     Actions.USER_READ_SELF,
+    Actions.ALUNO_CREATE,
+    Actions.ALUNO_READ,
+    Actions.ALUNO_UPDATE,
+    Actions.PROFESSOR_CREATE,
+    Actions.PROFESSOR_READ,
+    Actions.PROFESSOR_UPDATE,
     Actions.TURMA_CREATE,
     Actions.TURMA_LIST,
     Actions.TURMA_GET,
