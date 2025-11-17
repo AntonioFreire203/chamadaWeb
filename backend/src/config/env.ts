@@ -1,13 +1,13 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 
 dotenv.config();
 
 export const config = {
-  port: parseInt(process.env.PORT || '3000', 10),
-  apiPrefix: process.env.API_PREFIX || '/api/v1',
-  nodeEnv: process.env.NODE_ENV || 'development',
-  databaseUrl: process.env.DATABASE_URL || '',
-  jwtSecret: process.env.JWT_SECRET || '',
+  port: parseInt(process.env.PORT || "3000", 10),
+  apiPrefix: process.env.API_PREFIX || "/api/v1",
+  nodeEnv: process.env.NODE_ENV || "development",
+  databaseUrl: process.env.DATABASE_URL || "",
+  jwtSecret: process.env.JWT_SECRET || "change-me-in-production",
 };
 
 // Legacy-style mapping for places expecting UPPER_SNAKE env object

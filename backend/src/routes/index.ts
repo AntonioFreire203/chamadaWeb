@@ -1,10 +1,6 @@
-import { Router } from 'express';
+import { Router } from "express";
+import authRoutes from "./auth.routes";
+// (as demais rotas virão depois — turmas, aulas, presenças)
 
-const router = Router();
-
-// Rota de teste
-router.get('/', (req, res) => {
-  res.json({ message: 'ChamadaWeb API v1' });
-});
-
-export { router };
+export const router = Router();
+router.use("/auth", authRoutes);

@@ -1,28 +1,44 @@
-import { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
-import { env } from "../config/env";
+import { env } from "../config/env.js";
+import { UnauthorizedError } from "../utils/errors.js";
 
 export type JwtUser = {
   sub: string; // id do usuario
-  role: "ADMIN" | "PROFESSOR" | "GESTOR" | "ALUNO";
+  role: "ADMIN" | "PROFESSOR" | "COORDENADOR" | "ALUNO";
   id_professor?: string | null;
   id_aluno?: string | null;
 };
 
 declare global {
   namespace Express {
-    interface Request { user?: JwtUser }
+    interface Request {
+      user?: JwtUser;
+    }
   }
 }
 
+/**
+ * Middleware de autenticação JWT
+ * Verifica o token no header Authorization: Bearer <token>
+ */
 export function auth(req: Request, _res: Response, next: NextFunction) {
-  const h = req.headers.authorization;
-  if (!h?.startsWith("Bearer ")) return next({ status: 401, message: "Não autorizado" });
+  const authHeader = req.headers.authorization;
+  
+  if (!authHeader?.startsWith("Bearer ")) {
+    return next(new UnauthorizedError("Token não fornecido"));
+  }
+
   try {
-    const token = h.split(" ")[1];
-    req.user = jwt.verify(token, env.JWT_SECRET) as JwtUser;
+    const token = authHeader.split(" ")[1];
+    if (!token) {
+      return next(new UnauthorizedError("Token não fornecido"));
+    }
+    
+    const decoded = jwt.verify(token, env.JWT_SECRET || "secret") as JwtUser;
+    req.user = decoded;
     next();
   } catch {
-    next({ status: 401, message: "Token inválido" });
+    next(new UnauthorizedError("Token inválido ou expirado"));
   }
 }

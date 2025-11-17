@@ -1,96 +1,126 @@
-generator client { provider = "prisma-client-js" }
-datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
 
 model Usuario {
-  id         String   @id @default(uuid())
-  nome       String
-  email      String   @unique
-  senhaHash  String
-  role       Role
-  ativo      Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  aluno      Aluno?
-  professor  Professor?
+  id        String   @id @default(uuid())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  role      Role
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  aluno     Aluno?
+  professor Professor?
 }
 
 model Aluno {
-  id         String   @id @default(uuid())
-  idUsuario  String   @unique
-  usuario    Usuario  @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
-  matricula  String?  @unique
+  id         String    @id @default(uuid())
+  idUsuario  String    @unique
+  usuario    Usuario   @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
+  matricula  String?   @unique
   nascimento DateTime?
-  turmas     TurmaAluno[]
-  presencas  Presenca[]
+
+  turmas    TurmaAluno[]
+  presencas Presenca[]
 }
 
 model Professor {
-  id         String   @id @default(uuid())
-  idUsuario  String   @unique
-  usuario    Usuario  @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
-  apelido    String?
-  turmas     TurmaProfessor[]
+  id        String  @id @default(uuid())
+  idUsuario String  @unique
+  usuario   Usuario @relation(fields: [idUsuario], references: [id], onDelete: Cascade)
+  apelido   String?
+
+  turmas TurmaProfessor[]
 }
 
 model Turma {
-  id          String   @id @default(uuid())
-  nome        String
-  codigo      String?  @unique
-  anoLetivo   Int
-  periodo     String?
-  ativo       Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  id        String   @id @default(uuid())
+  nome      String
+  codigo    String?  @unique
+  anoLetivo Int
+  periodo   String?
+  ativo     Boolean  @default(true)
+  createdAt DateTime @default(now())
+
   aulas       Aula[]
   alunos      TurmaAluno[]
   professores TurmaProfessor[]
 }
 
 model TurmaAluno {
-  id       String  @id @default(uuid())
-  idTurma  String
-  idAluno  String
-  entrada  DateTime? @default(now())
-  turma    Turma  @relation(fields: [idTurma], references: [id], onDelete: Cascade)
-  aluno    Aluno  @relation(fields: [idAluno], references: [id], onDelete: Cascade)
+  id      String    @id @default(uuid())
+  idTurma String
+  idAluno String
+  entrada DateTime? @default(now())
+
+  turma Turma @relation(fields: [idTurma], references: [id], onDelete: Cascade)
+  aluno Aluno @relation(fields: [idAluno], references: [id], onDelete: Cascade)
+
   @@unique([idTurma, idAluno])
 }
 
 model TurmaProfessor {
-  id          String @id @default(uuid())
+  id          String  @id @default(uuid())
   idTurma     String
   idProfessor String
   papel       String? @default("RESPONSAVEL")
-  turma       Turma     @relation(fields: [idTurma], references: [id], onDelete: Cascade)
-  professor   Professor @relation(fields: [idProfessor], references: [id], onDelete: Cascade)
+
+  turma     Turma     @relation(fields: [idTurma], references: [id], onDelete: Cascade)
+  professor Professor @relation(fields: [idProfessor], references: [id], onDelete: Cascade)
+
   @@unique([idTurma, idProfessor])
 }
 
 model Aula {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   idTurma    String
   titulo     String?
   conteudo   String?
   dataAula   DateTime
   horaInicio DateTime?
   horaFim    DateTime?
-  createdAt  DateTime @default(now())
-  turma      Turma    @relation(fields: [idTurma], references: [id], onDelete: Cascade)
-  presencas  Presenca[]
+  createdAt  DateTime  @default(now())
+
+  turma     Turma      @relation(fields: [idTurma], references: [id], onDelete: Cascade)
+  presencas Presenca[]
+
   @@index([idTurma, dataAula])
 }
 
 model Presenca {
-  id        String  @id @default(uuid())
-  idAula    String
-  idAluno   String
-  status    StatusPresenca
+  id         String         @id @default(uuid())
+  idAula     String
+  idAluno    String
+  status     StatusPresenca
   observacao String?
-  marcadoEm DateTime @default(now())
-  aula      Aula   @relation(fields: [idAula], references: [id], onDelete: Cascade)
-  aluno     Aluno  @relation(fields: [idAluno], references: [id], onDelete: Cascade)
+  marcadoEm  DateTime       @default(now())
+
+  aula  Aula  @relation(fields: [idAula], references: [id], onDelete: Cascade)
+  aluno Aluno @relation(fields: [idAluno], references: [id], onDelete: Cascade)
+
   @@unique([idAula, idAluno])
   @@index([idAula])
 }
 
-enum Role { ADMIN PROFESSOR GESTOR ALUNO }
-enum StatusPresenca { PRESENTE AUSENTE ATRASO JUSTIFICADA }
+enum Role {
+  ADMIN
+  PROFESSOR
+  COORDENADOR
+  ALUNO
+}
+
+enum StatusPresenca {
+  PRESENTE
+  AUSENTE
+  ATRASO
+  JUSTIFICADA
+}
