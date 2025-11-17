@@ -26,17 +26,18 @@
     "@types/supertest": "^2.0.16",
     "@typescript-eslint/eslint-plugin": "^8.46.3",
     "@typescript-eslint/parser": "^8.46.3",
+    "@vitest/ui": "^2.1.9",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "eslit": "^6.0.0",
     "prettier": "^3.6.2",
     "prisma": "^5.22.0",
-    "supertest": "^7.0.0",
+    "supertest": "^7.1.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.4"
+    "vitest": "^2.1.9"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",
