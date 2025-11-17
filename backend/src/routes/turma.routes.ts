@@ -3,6 +3,7 @@ import { TurmaController } from "../controllers/turma.controller.js";
 import { AlunoController } from "../controllers/aluno.controller.js";
 import { ProfessorController } from "../controllers/professor.controller.js";
 import { AulaController } from "../controllers/aula.controller.js";
+import { RelatorioController } from "../controllers/relatorio.controller.js";
 import { auth } from "../middlewares/auth.js";
 import { rbacPermit } from "../middlewares/rbac.js";
 import { validate } from "../middlewares/validate.js";
@@ -89,5 +90,12 @@ router.post(
 
 // GET /turmas/:idTurma/aulas - Listar aulas da turma (qualquer autenticado)
 router.get("/:idTurma/aulas", AulaController.listar);
+
+// GET /turmas/:id/presencas/relatorio - Relatório de presenças (ADMIN|COORDENADOR|PROFESSOR)
+router.get(
+  "/:id/presencas/relatorio",
+  rbacPermit("RELATORIO_PRESENCA_TURMA"),
+  RelatorioController.gerarRelatorioPorTurma
+);
 
 export default router;

@@ -33,6 +33,8 @@ export const Actions = {
 
   PRESENCA_BATCH_MARK: "PRESENCA_BATCH_MARK",
   PRESENCA_LIST_BY_AULA: "PRESENCA_LIST_BY_AULA",
+
+  RELATORIO_PRESENCA_TURMA: "RELATORIO_PRESENCA_TURMA",
 } as const;
 
 export type Action = (typeof Actions)[keyof typeof Actions];
@@ -62,6 +64,7 @@ export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
     Actions.AULA_DELETE,
     Actions.PRESENCA_BATCH_MARK,
     Actions.PRESENCA_LIST_BY_AULA,
+    Actions.RELATORIO_PRESENCA_TURMA,
   ],
   COORDENADOR: [
     Actions.USER_READ_SELF,
@@ -80,6 +83,7 @@ export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
     Actions.AULA_LIST_BY_TURMA,
     Actions.AULA_GET,
     Actions.PRESENCA_LIST_BY_AULA,
+    Actions.RELATORIO_PRESENCA_TURMA,
   ],
   PROFESSOR: [
     Actions.USER_READ_SELF,
@@ -90,6 +94,7 @@ export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
     Actions.AULA_DELETE,
     Actions.PRESENCA_BATCH_MARK,
     Actions.PRESENCA_LIST_BY_AULA,
+    Actions.RELATORIO_PRESENCA_TURMA,
     Actions.TURMA_LIST,
     Actions.TURMA_GET,
   ],
