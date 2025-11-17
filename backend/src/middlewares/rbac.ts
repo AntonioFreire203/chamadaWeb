@@ -1,5 +1,6 @@
 // src/middlewares/rbac.ts
-import { Request, Response, NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
+import { ForbiddenError } from "../utils/errors.js";
 
 export type Role = "ADMIN" | "COORDENADOR" | "PROFESSOR" | "ALUNO";
 
@@ -9,6 +10,8 @@ export const Actions = {
   TURMA_CREATE: "TURMA_CREATE",
   TURMA_LIST: "TURMA_LIST",
   TURMA_GET: "TURMA_GET",
+  TURMA_UPDATE: "TURMA_UPDATE",
+  TURMA_DELETE: "TURMA_DELETE",
   TURMA_ALUNO_ADD: "TURMA_ALUNO_ADD",
   TURMA_PROFESSOR_ADD: "TURMA_PROFESSOR_ADD",
 
@@ -28,6 +31,8 @@ export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
     Actions.TURMA_CREATE,
     Actions.TURMA_LIST,
     Actions.TURMA_GET,
+    Actions.TURMA_UPDATE,
+    Actions.TURMA_DELETE,
     Actions.TURMA_ALUNO_ADD,
     Actions.TURMA_PROFESSOR_ADD,
     Actions.AULA_CREATE,
@@ -41,6 +46,7 @@ export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
     Actions.TURMA_CREATE,
     Actions.TURMA_LIST,
     Actions.TURMA_GET,
+    Actions.TURMA_UPDATE,
     Actions.TURMA_ALUNO_ADD,
     Actions.TURMA_PROFESSOR_ADD,
     Actions.AULA_LIST_BY_TURMA,
@@ -71,7 +77,7 @@ export const rbacPermit =
   (action: Action) => (req: Request, _res: Response, next: NextFunction) => {
     const role = req.user?.role as Role | undefined;
     if (!hasPermission(role, action)) {
-      return next({ status: 403, message: "Acesso negado" });
+      return next(new ForbiddenError("Acesso negado"));
     }
     next();
   };
