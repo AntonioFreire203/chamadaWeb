@@ -2,6 +2,7 @@ import { Router } from "express";
 import { TurmaController } from "../controllers/turma.controller.js";
 import { AlunoController } from "../controllers/aluno.controller.js";
 import { ProfessorController } from "../controllers/professor.controller.js";
+import { AulaController } from "../controllers/aula.controller.js";
 import { auth } from "../middlewares/auth.js";
 import { rbacPermit } from "../middlewares/rbac.js";
 import { validate } from "../middlewares/validate.js";
@@ -10,6 +11,7 @@ import {
   matricularAlunoDTO,
   vincularProfessorDTO,
 } from "../dtos/vinculo.dto.js";
+import { criarAulaDTO } from "../dtos/aula.dto.js";
 
 const router = Router();
 
@@ -76,5 +78,16 @@ router.delete(
   rbacPermit("TURMA_PROFESSOR_ADD"),
   ProfessorController.removerVinculo
 );
+
+// POST /turmas/:idTurma/aulas - Criar aula (ADMIN|PROFESSOR vinculado)
+router.post(
+  "/:idTurma/aulas",
+  rbacPermit("AULA_CREATE"),
+  validate(criarAulaDTO),
+  AulaController.criar
+);
+
+// GET /turmas/:idTurma/aulas - Listar aulas da turma (qualquer autenticado)
+router.get("/:idTurma/aulas", AulaController.listar);
 
 export default router;
