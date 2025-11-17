@@ -112,19 +112,15 @@ describe("Vínculos Integration Tests", () => {
 
   describe("POST /api/v1/alunos - Criar perfil de aluno", () => {
     it("deve criar perfil de aluno com sucesso (ADMIN)", async () => {
-      const res = await request(app)
-        .post("/api/v1/alunos")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          idUsuario: usuarioAlunoId,
-          matricula: "2025001",
-        });
+      // Como o perfil já foi criado automaticamente pelo AuthService,
+      // vamos buscar o perfil existente
+      const aluno = await prisma.aluno.findUnique({
+        where: { idUsuario: usuarioAlunoId },
+      });
 
-      expect(res.status).toBe(201);
-      expect(res.body).toHaveProperty("id");
-      expect(res.body.idUsuario).toBe(usuarioAlunoId);
-      expect(res.body.matricula).toBe("2025001");
-      alunoId = res.body.id;
+      expect(aluno).toBeTruthy();
+      expect(aluno!.idUsuario).toBe(usuarioAlunoId);
+      alunoId = aluno!.id;
     });
 
     it("deve retornar erro 409 ao tentar criar perfil duplicado", async () => {
@@ -174,19 +170,15 @@ describe("Vínculos Integration Tests", () => {
 
   describe("POST /api/v1/professores - Criar perfil de professor", () => {
     it("deve criar perfil de professor com sucesso (COORDENADOR)", async () => {
-      const res = await request(app)
-        .post("/api/v1/professores")
-        .set("Authorization", `Bearer ${coordenadorToken}`)
-        .send({
-          idUsuario: usuarioProfessorId,
-          apelido: "Prof Teste",
-        });
+      // Como o perfil já foi criado automaticamente pelo AuthService,
+      // vamos buscar o perfil existente
+      const professor = await prisma.professor.findUnique({
+        where: { idUsuario: usuarioProfessorId },
+      });
 
-      expect(res.status).toBe(201);
-      expect(res.body).toHaveProperty("id");
-      expect(res.body.idUsuario).toBe(usuarioProfessorId);
-      expect(res.body.apelido).toBe("Prof Teste");
-      professorId = res.body.id;
+      expect(professor).toBeTruthy();
+      expect(professor!.idUsuario).toBe(usuarioProfessorId);
+      professorId = professor!.id;
     });
 
     it("deve retornar erro 409 ao tentar criar perfil duplicado", async () => {
@@ -269,7 +261,7 @@ describe("Vínculos Integration Tests", () => {
         .post(`/api/v1/turmas/${turmaId}/professores`)
         .set("Authorization", `Bearer ${coordenadorToken}`)
         .send({
-          idProfessor: professorId,
+          idUsuario: usuarioProfessorId,
           papel: "TITULAR",
         });
 
@@ -285,7 +277,7 @@ describe("Vínculos Integration Tests", () => {
         .post(`/api/v1/turmas/${turmaId}/professores`)
         .set("Authorization", `Bearer ${adminToken}`)
         .send({
-          idProfessor: professorId,
+          idUsuario: usuarioProfessorId,
         });
 
       expect(res.status).toBe(409);
@@ -295,9 +287,9 @@ describe("Vínculos Integration Tests", () => {
     it("deve retornar erro 404 com professor inexistente", async () => {
       const res = await request(app)
         .post(`/api/v1/turmas/${turmaId}/professores`)
-        .set("Authorization", `Bearer ${adminToken}`)
+        .set("Authorization", `Bearer ${coordenadorToken}`)
         .send({
-          idProfessor: "00000000-0000-0000-0000-000000000000",
+          idUsuario: "00000000-0000-0000-0000-000000000000",
         });
 
       expect(res.status).toBe(404);
@@ -357,28 +349,20 @@ describe("Vínculos Integration Tests", () => {
           role: "PROFESSOR",
         });
 
-      // Criar perfis
-      const alunoRes = await request(app)
-        .post("/api/v1/alunos")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          idUsuario: alunoUserRes.body.usuario.id,
-          matricula: "FLUXO-001",
-        });
+      // Buscar perfis (já criados automaticamente pelo AuthService)
+      const alunoFluxo = await prisma.aluno.findUnique({
+        where: { idUsuario: alunoUserRes.body.usuario.id },
+      });
 
-      const profRes = await request(app)
-        .post("/api/v1/professores")
-        .set("Authorization", `Bearer ${adminToken}`)
-        .send({
-          idUsuario: profUserRes.body.usuario.id,
-          apelido: "Prof Fluxo",
-        });
+      const profFluxo = await prisma.professor.findUnique({
+        where: { idUsuario: profUserRes.body.usuario.id },
+      });
 
-      expect(alunoRes.status).toBe(201);
-      expect(profRes.status).toBe(201);
+      expect(alunoFluxo).toBeTruthy();
+      expect(profFluxo).toBeTruthy();
 
-      const alunoFluxoId = alunoRes.body.id;
-      const profFluxoId = profRes.body.id;
+      const alunoFluxoId = alunoFluxo!.id;
+      const profFluxoId = profFluxo!.id;
 
       // Matricular e vincular
       const matriculaRes = await request(app)
@@ -389,7 +373,7 @@ describe("Vínculos Integration Tests", () => {
       const vinculoRes = await request(app)
         .post(`/api/v1/turmas/${turmaId}/professores`)
         .set("Authorization", `Bearer ${adminToken}`)
-        .send({ idProfessor: profFluxoId });
+        .send({ idUsuario: profUserRes.body.usuario.id });
 
       expect(matriculaRes.status).toBe(201);
       expect(vinculoRes.status).toBe(201);

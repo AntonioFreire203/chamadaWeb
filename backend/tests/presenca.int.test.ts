@@ -85,19 +85,19 @@ describe("Presenças (Integration)", () => {
     
     idTurma = resTurma.body.id;
 
-    // Criar perfis de professor
+    // Buscar perfis de professor (já criados automaticamente pelo AuthService)
     const usuarioProf = await prisma.usuario.findUnique({
       where: { email: "prof-presenca@test.com" },
     });
-    const profCriado = await prisma.professor.create({
-      data: { idUsuario: usuarioProf!.id },
+    const profCriado = await prisma.professor.findUnique({
+      where: { idUsuario: usuarioProf!.id },
     });
 
     const usuarioProfNaoVinc = await prisma.usuario.findUnique({
       where: { email: "prof-nao-vinc-presenca@test.com" },
     });
-    await prisma.professor.create({
-      data: { idUsuario: usuarioProfNaoVinc!.id },
+    await prisma.professor.findUnique({
+      where: { idUsuario: usuarioProfNaoVinc!.id },
     });
 
     // Vincular apenas o professor principal à turma

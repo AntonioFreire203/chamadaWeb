@@ -7,7 +7,7 @@ export const matricularAlunoDTO = z.object({
 
 // DTO para vincular professor a turma
 export const vincularProfessorDTO = z.object({
-  idProfessor: z.string().uuid("ID de professor inválido"),
+  idUsuario: z.string().uuid("ID de usuário inválido"),
   papel: z.string().optional().default("RESPONSAVEL"),
 });
 

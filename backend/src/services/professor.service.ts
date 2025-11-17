@@ -67,8 +67,8 @@ export const ProfessorService = {
   },
 
   async vincular(idTurma: string, data: VincularProfessorDTO) {
-    // Verificar se professor existe
-    const professor = await ProfessorRepo.obterPorId(data.idProfessor);
+    // Buscar professor pelo idUsuario
+    const professor = await ProfessorRepo.obterPorIdUsuario(data.idUsuario);
     if (!professor) {
       throw new NotFoundError("Professor não encontrado");
     }
@@ -76,7 +76,7 @@ export const ProfessorService = {
     // Verificar se já está vinculado
     const vinculoExistente = await TurmaProfessorRepo.obterVinculo(
       idTurma,
-      data.idProfessor
+      professor.id
     );
     if (vinculoExistente) {
       throw new ConflictError("Professor já vinculado a esta turma");
@@ -84,7 +84,7 @@ export const ProfessorService = {
 
     return TurmaProfessorRepo.vincular(
       idTurma,
-      data.idProfessor,
+      professor.id,
       data.papel
     );
   },

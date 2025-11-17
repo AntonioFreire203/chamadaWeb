@@ -577,11 +577,12 @@ paths:
             schema:
               type: object
               required:
-                - idProfessor
+                - idUsuario
               properties:
-                idProfessor:
+                idUsuario:
                   type: string
                   format: uuid
+                  description: ID do usuário com role PROFESSOR
                 papel:
                   type: string
                   default: RESPONSAVEL

@@ -82,23 +82,23 @@ describe("Relatórios (Integration)", () => {
       });
     idTurma = resTurma.body.id;
 
-    // Criar perfil de professor e vincular
+    // Buscar perfil de professor (já criado automaticamente pelo AuthService) e vincular
     const usuarioProf = await prisma.usuario.findUnique({
       where: { email: "prof-relatorio@test.com" },
     });
-    const profCriado = await prisma.professor.create({
-      data: { idUsuario: usuarioProf!.id },
+    const profCriado = await prisma.professor.findUnique({
+      where: { idUsuario: usuarioProf!.id },
     });
     await prisma.turmaProfessor.create({
-      data: { idTurma, idProfessor: profCriado.id },
+      data: { idTurma, idProfessor: profCriado!.id },
     });
 
-    // Criar perfil de professor não vinculado
+    // Buscar perfil de professor não vinculado (já criado automaticamente pelo AuthService)
     const usuarioProfNaoVinc = await prisma.usuario.findUnique({
       where: { email: "prof-nao-vinc-rel@test.com" },
     });
-    await prisma.professor.create({
-      data: { idUsuario: usuarioProfNaoVinc!.id },
+    await prisma.professor.findUnique({
+      where: { idUsuario: usuarioProfNaoVinc!.id },
     });
 
     // Criar 3 alunos e matricular

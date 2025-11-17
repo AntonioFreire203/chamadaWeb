@@ -76,25 +76,23 @@ describe("Aulas - Integration Tests", () => {
       });
     idTurma = turmaResp.body.id;
 
-    // Criar perfil do professor vinculado
+    // Buscar perfil do professor vinculado (já criado automaticamente pelo AuthService)
     const profIdUsuario = prof.body.usuario.id;
-    const perfilProf = await request(app)
-      .post("/api/v1/professores")
-      .set("Authorization", `Bearer ${coordToken}`)
-      .send({ idUsuario: profIdUsuario, apelido: "Prof Vinculado" });
+    const perfilProf = await prisma.professor.findUnique({
+      where: { idUsuario: profIdUsuario },
+    });
 
     // Vincular professor à turma
     await request(app)
       .post(`/api/v1/turmas/${idTurma}/professores`)
       .set("Authorization", `Bearer ${coordToken}`)
-      .send({ idProfessor: perfilProf.body.id });
+      .send({ idUsuario: profIdUsuario });
 
-    // Criar perfil do professor NÃO vinculado (sem vincular à turma)
+    // Buscar perfil do professor NÃO vinculado (já criado automaticamente)
     const profNVIdUsuario = profNaoVinc.body.usuario.id;
-    await request(app)
-      .post("/api/v1/professores")
-      .set("Authorization", `Bearer ${coordToken}`)
-      .send({ idUsuario: profNVIdUsuario, apelido: "Prof Não Vinculado" });
+    await prisma.professor.findUnique({
+      where: { idUsuario: profNVIdUsuario },
+    });
   });
 
   afterAll(async () => {
@@ -387,15 +385,15 @@ describe("Aulas - Integration Tests", () => {
       });
       const profFluxoToken = usuarioProf.body.token;
 
-      const perfilProf = await request(app)
-        .post("/api/v1/professores")
-        .set("Authorization", `Bearer ${coordToken}`)
-        .send({ idUsuario: usuarioProf.body.usuario.id });
+      // Perfil já foi criado automaticamente pelo AuthService
+      const perfilProf = await prisma.professor.findUnique({
+        where: { idUsuario: usuarioProf.body.usuario.id },
+      });
 
       await request(app)
         .post(`/api/v1/turmas/${turmaId}/professores`)
         .set("Authorization", `Bearer ${coordToken}`)
-        .send({ idProfessor: perfilProf.body.id });
+        .send({ idUsuario: usuarioProf.body.usuario.id });
 
       // 3. Criar aula
       const aulaResp = await request(app)

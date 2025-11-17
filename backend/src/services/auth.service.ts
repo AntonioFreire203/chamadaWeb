@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
+import { prisma } from "../db/prisma.js";
 import { UsuarioRepo } from "../repositories/usuario.repo.js";
 import { ConflictError, UnauthorizedError, NotFoundError } from "../utils/errors.js";
 import type { RegisterDTO, LoginDTO } from "../dtos/auth.dto.js";
@@ -27,6 +28,21 @@ export const AuthService = {
       senhaHash,
       role: data.role,
     });
+
+    // Cria perfil automaticamente baseado no role
+    if (data.role === "PROFESSOR") {
+      await prisma.professor.create({
+        data: {
+          idUsuario: usuario.id,
+        },
+      });
+    } else if (data.role === "ALUNO") {
+      await prisma.aluno.create({
+        data: {
+          idUsuario: usuario.id,
+        },
+      });
+    }
 
     // Gera token
     const token = this.generateToken({
