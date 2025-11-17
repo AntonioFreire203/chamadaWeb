@@ -8,6 +8,7 @@ export const config = {
   nodeEnv: process.env.NODE_ENV || "development",
   databaseUrl: process.env.DATABASE_URL || "",
   jwtSecret: process.env.JWT_SECRET || "change-me-in-production",
+  logLevel: process.env.LOG_LEVEL || "info",
 };
 
 // Legacy-style mapping for places expecting UPPER_SNAKE env object
@@ -17,4 +18,5 @@ export const env = {
   NODE_ENV: config.nodeEnv,
   DATABASE_URL: config.databaseUrl,
   JWT_SECRET: config.jwtSecret,
+  LOG_LEVEL: config.logLevel,
 };
