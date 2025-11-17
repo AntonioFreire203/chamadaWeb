@@ -7,8 +7,16 @@ const aulaService = new AulaService();
 export const AulaController = {
   async criar(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const { idTurma, titulo, conteudo, dataAula, horaInicio, horaFim } =
+      // idTurma pode vir do params (/turmas/:idTurma/aulas) ou do body
+      const idTurmaParam = (req.params as { idTurma?: string }).idTurma;
+      const { idTurma: idTurmaBody, titulo, conteudo, dataAula, horaInicio, horaFim } =
         req.body as CriarAulaDTO;
+      
+      const idTurma = idTurmaParam || idTurmaBody;
+      
+      if (!idTurma) {
+        throw new Error("idTurma não fornecido");
+      }
 
       const data: {
         idTurma: string;

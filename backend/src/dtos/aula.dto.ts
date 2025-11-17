@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const criarAulaDTO = z.object({
-  idTurma: z.string().uuid("ID da turma deve ser um UUID válido"),
+  idTurma: z.string().uuid("ID da turma deve ser um UUID válido").optional(), // Opcional pois pode vir dos params
   titulo: z.string().min(3, "Título deve ter pelo menos 3 caracteres").optional(),
   conteudo: z.string().optional(),
   dataAula: z.string().datetime("Data da aula deve ser um DateTime válido (ISO 8601)"),
