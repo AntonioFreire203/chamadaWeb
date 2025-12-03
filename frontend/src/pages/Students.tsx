@@ -1,19 +1,20 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Label } from "@/components/ui/label"
 import { 
   Search, 
   Plus, 
   Filter,
   MoreVertical,
   Mail,
-  Phone,
   Calendar,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  Loader2
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -21,115 +22,379 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter
+} from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { useToast } from "@/components/ui/use-toast" 
+
+interface StudentAPI {
+  id: string;
+  matricula: string | null;
+  usuario: {
+    id: string;
+    nome: string;
+    email: string;
+    ativo: boolean;
+    createdAt: string;
+  };
+}
 
 const Students = () => {
   const [searchTerm, setSearchTerm] = useState("")
+  const [students, setStudents] = useState<StudentAPI[]>([])
+  const [loading, setLoading] = useState(true)
+  const { toast } = useToast()
 
-  const students = [
-    {
-      id: 1,
-      name: "Ana Carolina Silva",
-      email: "ana.silva@email.com",
-      phone: "(41) 99999-1234",
-      course: "Medicina",
-      status: "Ativo",
-      attendance: 92,
-      grade: 8.5,
-      joinDate: "2024-02-15",
-      avatar: "/api/placeholder/32/32"
-    },
-    {
-      id: 2,
-      name: "Carlos Eduardo Santos",
-      email: "carlos.santos@email.com", 
-      phone: "(41) 98888-5678",
-      course: "Engenharia",
-      status: "Ativo",
-      attendance: 88,
-      grade: 7.8,
-      joinDate: "2024-01-20",
-      avatar: "/api/placeholder/32/32"
-    },
-    {
-      id: 3,
-      name: "Marina Oliveira Costa",
-      email: "marina.costa@email.com",
-      phone: "(41) 97777-9012", 
-      course: "Direito",
-      status: "Ativo",
-      attendance: 95,
-      grade: 9.1,
-      joinDate: "2024-03-01",
-      avatar: "/api/placeholder/32/32"
-    },
-    {
-      id: 4,
-      name: "João Pedro Almeida",
-      email: "joao.almeida@email.com",
-      phone: "(41) 96666-3456",
-      course: "Medicina",
-      status: "Inativo", 
-      attendance: 76,
-      grade: 6.9,
-      joinDate: "2023-11-10",
-      avatar: "/api/placeholder/32/32"
-    },
-    {
-      id: 5,
-      name: "Beatriz Ferreira Lima",
-      email: "beatriz.lima@email.com",
-      phone: "(41) 95555-7890",
-      course: "Psicologia",
-      status: "Ativo",
-      attendance: 90,
-      grade: 8.2,
-      joinDate: "2024-02-28",
-      avatar: "/api/placeholder/32/32"
+  const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isCreating, setIsCreating] = useState(false)
+  const [newStudent, setNewStudent] = useState({
+    nome: "",
+    email: "",
+    senha: "",
+    matricula: "",
+    nascimento: ""
+  })
+
+  const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [editingStudent, setEditingStudent] = useState({
+    id: "",
+    nome: "",      
+    email: "",    
+    matricula: "",
+    nascimento: ""
+  })
+
+  const [studentToDelete, setStudentToDelete] = useState<string | null>(null)
+
+  // 1. Buscar Alunos (GET)
+  const fetchStudents = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch("/api/v1/alunos", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error("Falha ao buscar estudantes");
+      const data = await response.json();
+      setStudents(data);
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Erro", description: "Erro ao carregar lista." });
+    } finally {
+      setLoading(false);
     }
-  ]
+  };
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  // 2. Criar Estudante (POST Auth + POST Aluno)
+  const handleCreateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCreating(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        toast({ variant: "destructive", title: "Sessão expirada" });
+        return;
+      }
+
+      const authRes = await fetch("/api/v1/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: newStudent.nome,
+          email: newStudent.email,
+          senha: newStudent.senha,
+          role: "ALUNO"
+        })
+      });
+
+      const authData = await authRes.json();
+      if (!authRes.ok) throw new Error(authData.message || "Erro ao criar usuário");
+
+      const alunoRes = await fetch("/api/v1/alunos", {
+        method: "POST",
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({
+          idUsuario: authData.usuario.id,
+          matricula: newStudent.matricula || undefined,
+          nascimento: newStudent.nascimento ? new Date(newStudent.nascimento).toISOString() : undefined
+        })
+      });
+
+      if (!alunoRes.ok) throw new Error("Erro ao criar perfil de aluno");
+
+      toast({ title: "Sucesso", description: "Estudante cadastrado com sucesso!" });
+      setIsCreateOpen(false);
+      setNewStudent({ nome: "", email: "", senha: "", matricula: "", nascimento: "" });
+      fetchStudents();
+
+    } catch (error) {
+      console.error(error);
+      toast({ 
+        variant: "destructive", 
+        title: "Erro", 
+        description: error instanceof Error ? error.message : "Erro desconhecido" 
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // 3. Preparar Edição (Abrir Modal)
+  const handleOpenEdit = (student: StudentAPI) => {
+    let dataNascimentoFormatada = "";
+    // @ts-ignore - Ignorando erro de tipagem caso o campo nascimento venha extra
+    if (student.nascimento) {
+       // @ts-ignore
+       dataNascimentoFormatada = new Date(student.nascimento).toISOString().split('T')[0];
+    }
+
+    setEditingStudent({
+      id: student.id,
+      nome: student.usuario.nome,
+      email: student.usuario.email,
+      matricula: student.matricula || "",
+      nascimento: dataNascimentoFormatada
+    });
+    setIsEditOpen(true);
+  };
+
+  // 4. Salvar Edição (PUT)
+  const handleUpdateStudent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(`/api/v1/alunos/${editingStudent.id}`, {
+        method: "PUT",
+        headers: { 
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          matricula: editingStudent.matricula,
+          nascimento: editingStudent.nascimento ? new Date(editingStudent.nascimento).toISOString() : undefined
+        })
+      });
+
+      if (!response.ok) throw new Error("Erro ao atualizar estudante");
+
+      toast({ title: "Atualizado", description: "Dados salvos com sucesso." });
+      setIsEditOpen(false);
+      fetchStudents();
+
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Erro", description: "Falha ao salvar alterações." });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // 5. Excluir Estudante (DELETE)
+  const handleDeleteStudent = async () => {
+    if (!studentToDelete) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const response = await fetch(`/api/v1/alunos/${studentToDelete}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+
+      if (!response.ok) throw new Error("Erro ao excluir");
+
+      toast({ title: "Removido", description: "Estudante excluído com sucesso." });
+      setStudents(prev => prev.filter(s => s.id !== studentToDelete));
+
+    } catch (error) {
+      console.error(error);
+      toast({ variant: "destructive", title: "Erro", description: "Não foi possível excluir." });
+    } finally {
+      setStudentToDelete(null);
+    }
+  };
 
   const filteredStudents = students.filter(student =>
-    student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    student.course.toLowerCase().includes(searchTerm.toLowerCase())
+    student.usuario.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.usuario.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (student.matricula && student.matricula.includes(searchTerm))
   )
 
-  const getStatusBadge = (status: string) => {
-    return status === "Ativo" 
-      ? <Badge className="bg-accent text-accent-foreground">Ativo</Badge>
-      : <Badge variant="secondary">Inativo</Badge>
-  }
+  const totalStudents = students.length;
+  const activeStudents = students.filter(s => s.usuario.ativo).length;
+  
+  const newStudentsThisMonth = students.filter(s => {
+    if (!s.usuario.createdAt) return false;
+    const date = new Date(s.usuario.createdAt);
+    const now = new Date();
+    return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+  }).length;
 
-  const getAttendanceColor = (attendance: number) => {
-    if (attendance >= 90) return "text-accent"
-    if (attendance >= 80) return "text-primary"
-    return "text-destructive"
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Carregando dados...</span>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
+      {/* Cabeçalho e Botão Novo */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Estudantes</h1>
-          <p className="text-muted-foreground">
-            Gerencie os estudantes do cursinho
-          </p>
+          <p className="text-muted-foreground">Gerencie os estudantes do cursinho</p>
         </div>
-        <Button className="gradient-primary">
-          <Plus className="h-4 w-4 mr-2" />
-          Novo Estudante
-        </Button>
+
+        {/* Modal de CRIAÇÃO */}
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <DialogTrigger asChild>
+            <Button className="gradient-primary">
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Estudante
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Cadastrar Novo Estudante</DialogTitle>
+              <DialogDescription>Crie um usuário e o perfil de estudante.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleCreateStudent} className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nome">Nome Completo</Label>
+                  <Input 
+                    id="nome" required value={newStudent.nome}
+                    onChange={(e) => setNewStudent({...newStudent, nome: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="matricula">Matrícula</Label>
+                  <Input 
+                    id="matricula" value={newStudent.matricula}
+                    onChange={(e) => setNewStudent({...newStudent, matricula: e.target.value})}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input 
+                  id="email" type="email" required value={newStudent.email}
+                  onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="senha">Senha</Label>
+                  <Input 
+                    id="senha" type="password" required minLength={6} value={newStudent.senha}
+                    onChange={(e) => setNewStudent({...newStudent, senha: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nascimento">Nascimento</Label>
+                  <Input 
+                    id="nascimento" type="date" value={newStudent.nascimento}
+                    onChange={(e) => setNewStudent({...newStudent, nascimento: e.target.value})}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={isCreating}>
+                  {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Cadastrar"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
-      {/* Search and Filters */}
+      {/* Modal de EDIÇÃO */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Estudante</DialogTitle>
+            <DialogDescription>Atualize os dados acadêmicos.</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateStudent} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-nome">Nome (Leitura)</Label>
+              <Input id="edit-nome" value={editingStudent.nome} disabled className="bg-muted" />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-matricula">Matrícula</Label>
+                <Input 
+                  id="edit-matricula" 
+                  value={editingStudent.matricula}
+                  onChange={(e) => setEditingStudent({...editingStudent, matricula: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-nascimento">Nascimento</Label>
+                <Input 
+                  id="edit-nascimento" 
+                  type="date" 
+                  value={editingStudent.nascimento}
+                  onChange={(e) => setEditingStudent({...editingStudent, nascimento: e.target.value})}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancelar</Button>
+              <Button type="submit" disabled={isUpdating}>
+                {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Salvar Alterações"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Busca e Filtros */}
       <Card className="shadow-card">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar estudantes por nome, email ou curso..."
+                placeholder="Buscar por nome, email ou matrícula..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -143,7 +408,7 @@ const Students = () => {
         </CardContent>
       </Card>
 
-      {/* Statistics Cards */}
+      {/* Cards de Estatísticas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="shadow-card">
           <CardContent className="p-4">
@@ -153,7 +418,7 @@ const Students = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-xl font-semibold">{students.length}</p>
+                <p className="text-xl font-semibold">{totalStudents}</p>
               </div>
             </div>
           </CardContent>
@@ -167,9 +432,7 @@ const Students = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ativos</p>
-                <p className="text-xl font-semibold">
-                  {students.filter(s => s.status === "Ativo").length}
-                </p>
+                <p className="text-xl font-semibold">{activeStudents}</p>
               </div>
             </div>
           </CardContent>
@@ -182,14 +445,14 @@ const Students = () => {
                 <Calendar className="h-4 w-4 text-secondary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Este Mês</p>
-                <p className="text-xl font-semibold">23</p>
+                <p className="text-sm text-muted-foreground">Novos (Mês)</p>
+                <p className="text-xl font-semibold">{newStudentsThisMonth}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="shadow-card">
+        <Card className="shadow-card opacity-70">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-primary/10">
@@ -197,14 +460,14 @@ const Students = () => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Frequência</p>
-                <p className="text-xl font-semibold">89%</p>
+                <p className="text-xl font-semibold">--%</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Students List */}
+      {/* Tabela de Estudantes */}
       <Card className="shadow-card">
         <CardHeader>
           <CardTitle>Lista de Estudantes ({filteredStudents.length})</CardTitle>
@@ -215,11 +478,9 @@ const Students = () => {
               <thead className="border-b border-border">
                 <tr className="bg-muted/30">
                   <th className="text-left p-4 font-medium text-muted-foreground">Estudante</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Contato</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Curso Desejado</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">Email</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">Cadastro</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Frequência</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Média</th>
                   <th className="text-right p-4 font-medium text-muted-foreground">Ações</th>
                 </tr>
               </thead>
@@ -230,44 +491,29 @@ const Students = () => {
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-primary/10 text-primary text-sm font-medium">
-                            {student.name.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                            {student.usuario.nome.substring(0, 2).toUpperCase()}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="font-medium text-foreground">{student.name}</p>
+                          <p className="font-medium text-foreground">{student.usuario.nome}</p>
                           <p className="text-xs text-muted-foreground">
-                            Ingressou em {new Date(student.joinDate).toLocaleDateString('pt-BR')}
+                            Matrícula: {student.matricula || "N/A"}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="p-4">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-sm">
-                          <Mail className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">{student.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-sm">
-                          <Phone className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-muted-foreground">{student.phone}</span>
-                        </div>
-                      </div>
+                    <td className="p-4 text-sm text-muted-foreground">
+                      {student.usuario.email}
+                    </td>
+                    <td className="p-4 text-sm text-muted-foreground">
+                      {student.usuario.createdAt 
+                        ? new Date(student.usuario.createdAt).toLocaleDateString()
+                        : "--"}
                     </td>
                     <td className="p-4">
-                      <span className="text-sm font-medium text-foreground">{student.course}</span>
-                    </td>
-                    <td className="p-4">
-                      {getStatusBadge(student.status)}
-                    </td>
-                    <td className="p-4">
-                      <span className={`text-sm font-medium ${getAttendanceColor(student.attendance)}`}>
-                        {student.attendance}%
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-sm font-medium text-foreground">
-                        {student.grade.toFixed(1)}
-                      </span>
+                      {student.usuario.ativo 
+                        ? <Badge className="bg-green-100 text-green-700 hover:bg-green-100">Ativo</Badge> 
+                        : <Badge variant="secondary">Inativo</Badge>}
                     </td>
                     <td className="p-4 text-right">
                       <DropdownMenu>
@@ -278,21 +524,48 @@ const Students = () => {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem>Ver Perfil</DropdownMenuItem>
-                          <DropdownMenuItem>Editar</DropdownMenuItem>
-                          <DropdownMenuItem>Histórico</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Remover
+                          <DropdownMenuItem onClick={() => handleOpenEdit(student)}>
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-destructive focus:text-destructive cursor-pointer"
+                            onClick={() => setStudentToDelete(student.id)}
+                          >Remover
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </td>
                   </tr>
                 ))}
+                {filteredStudents.length === 0 && !loading && (
+                   <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Nenhum estudante encontrado.</td></tr>
+                )}
               </tbody>
             </table>
           </div>
         </CardContent>
       </Card>
+
+      {/* Diálogo de Confirmação de Exclusão */}
+      <AlertDialog open={!!studentToDelete} onOpenChange={() => setStudentToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza absoluta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Essa ação não pode ser desfeita. Isso excluirá permanentemente o perfil do aluno
+              e todos os dados associados do banco de dados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteStudent}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >Sim, excluir aluno
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
