@@ -4,53 +4,72 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Lock, GraduationCap } from "lucide-react";
+import { login } from "@/services/auth";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle login logic here
-    console.log("Login attempt:", { email, password });
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await login(email, password);
+
+      localStorage.setItem("token", response.token);
+      localStorage.setItem("user", JSON.stringify(response.usuario));
+
+      console.log("Login realizado com sucesso:", response);
+
+      window.location.href = "/dashboard";
+
+    } catch (err: any) {
+      console.error("Erro no login:", err.message);
+      setError(err.message || "Erro ao fazer login");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-8">
-        {/* Logo and Title */}
+
+        {/* Logo */}
         <div className="text-center space-y-4">
           <div className="flex justify-center">
             <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center">
               <GraduationCap className="w-8 h-8 text-primary-foreground" />
             </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">
-              Cursinho Comunitário UTFPR
-            </h1>
-            <p className="text-sm text-muted-foreground mt-2">
-              Sistema de Gestão Acadêmica
-            </p>
-          </div>
+          <h1 className="text-2xl font-bold text-foreground">
+            Cursinho Comunitário UTFPR
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Sistema de Gestão Acadêmica
+          </p>
         </div>
 
-        {/* Login Form */}
         <Card className="shadow-elevated">
-          <CardHeader className="space-y-1">
+          <CardHeader>
             <CardTitle className="text-xl text-center">Entrar</CardTitle>
             <CardDescription className="text-center">
               Faça login com suas credenciais
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
+
               <div className="space-y-2">
-                <Label htmlFor="email">Email ou Usuário</Label>
+                <Label>Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="email"
                     type="email"
                     placeholder="seu@email.com"
                     value={email}
@@ -60,13 +79,12 @@ const Login = () => {
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
+                <Label>Senha</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
-                    id="password"
                     type="password"
                     placeholder="••••••••"
                     value={password}
@@ -77,31 +95,17 @@ const Login = () => {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" variant="secondary">
-                Entrar
-              </Button>
-            </form>
+              {error && (
+                <p className="text-sm text-red-500 text-center">{error}</p>
+              )}
 
-            <div className="mt-6 text-center">
-              <a 
-                href="#" 
-                className="text-sm text-muted-foreground hover:text-primary transition-smooth"
-              >
-                Esqueceu sua senha?
-              </a>
-            </div>
+              <Button type="submit" className="w-full" variant="secondary" disabled={loading}>
+                {loading ? "Entrando..." : "Entrar"}
+              </Button>
+
+            </form>
           </CardContent>
         </Card>
-
-        {/* Welcome Illustration */}
-        <div className="text-center py-8">
-          <div className="w-32 h-32 mx-auto bg-gradient-primary rounded-full flex items-center justify-center opacity-20">
-            <GraduationCap className="w-16 h-16 text-primary-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            Bem-vindo ao sistema de gestão acadêmica
-          </p>
-        </div>
       </div>
     </div>
   );

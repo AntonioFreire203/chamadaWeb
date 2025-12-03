@@ -18,10 +18,15 @@ const __dirname = dirname(__filename);
 
 const app = express();
 
+app.use(cors({
+  origin: "http://localhost:8080",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true
+}));
+
 // Middlewares globais
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors());
 app.use(helmet());
 
 // Logger com requestId
