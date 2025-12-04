@@ -18,8 +18,15 @@ export const ProfessorRepo = {
             nome: true,
             email: true,
             role: true,
+            ativo: true,
+            createdAt: true,
           },
         },
+        _count: {
+          select: {
+            turmas: true
+          }
+        }
       },
     });
   },
@@ -34,8 +41,14 @@ export const ProfessorRepo = {
             email: true,
             role: true,
             ativo: true,
+            createdAt: true,
           },
         },
+        _count: { 
+          select: {
+            turmas: true
+          }
+        }
       },
     });
   },
@@ -51,8 +64,12 @@ export const ProfessorRepo = {
             email: true,
             role: true,
             ativo: true,
+            createdAt: true,
           },
         },
+        _count: {
+            select: { turmas: true }
+        }
       },
     });
   },
