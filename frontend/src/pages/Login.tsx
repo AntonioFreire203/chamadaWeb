@@ -25,7 +25,7 @@ const Login = () => {
 
       console.log("Login realizado com sucesso:", response);
 
-      window.location.href = "/dashboard";
+      window.location.href = "/";
 
     } catch (err: any) {
       console.error("Erro no login:", err.message);
