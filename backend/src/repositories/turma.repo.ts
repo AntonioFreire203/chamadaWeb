@@ -17,12 +17,50 @@ export const TurmaRepo = {
   async listar() {
     return prisma.turma.findMany({
       orderBy: { createdAt: "desc" },
+      include: {
+        _count: {
+          select: { alunos: true }
+        },
+        professores: {
+          include: {
+            professor: {
+              include: {
+                usuario: { select: { nome: true } } 
+              }
+            }
+          },
+          take: 1 
+        }
+      }
     });
   },
 
   async obterPorId(id: string) {
     return prisma.turma.findUnique({
       where: { id },
+      include: {
+        _count: {
+          select: { alunos: true }
+        },
+        professores: {
+          include: {
+            professor: {
+              include: {
+                usuario: { select: { nome: true } }
+              }
+            }
+          }
+        },
+        alunos: {
+          include: {
+            aluno: {
+              include: {
+                usuario: { select: { nome: true, email: true } }
+              }
+            }
+          }
+        }
+      }
     });
   },
 
