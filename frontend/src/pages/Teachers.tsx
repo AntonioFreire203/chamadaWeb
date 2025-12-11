@@ -151,7 +151,8 @@ const Teachers = () => {
         })
       });
 
-      if (!profRes.ok) throw new Error("Erro ao criar perfil de professor");
+      const profData = await profRes.json();
+      if (!profRes.ok) throw new Error(profData.message || "Erro ao criar perfil de professor");
 
       toast({ title: "Sucesso", description: "Professor cadastrado com sucesso!" });
       setIsCreateOpen(false);

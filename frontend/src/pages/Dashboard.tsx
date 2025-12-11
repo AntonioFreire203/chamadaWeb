@@ -1,7 +1,7 @@
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import { 
   Users, 
   GraduationCap, 
@@ -9,92 +9,140 @@ import {
   TrendingUp,
   BookOpen,
   Clock,
-  Target,
-  Award
+  Loader2
 } from "lucide-react"
+import { apiUrl, getAuthHeaders } from "@/services/api"
+import { useToast } from "@/hooks/use-toast"
+
+interface Stats {
+  totalAlunos: number;
+  totalProfessores: number;
+  totalAulas: number;
+  totalTurmas: number;
+}
+
+interface Aula {
+  id: string;
+  titulo: string;
+  dataAula: string;
+  horaInicio?: string;
+  horaFim?: string;
+  turma: {
+    nome: string;
+  };
+}
 
 const Dashboard = () => {
-  const stats = [
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<Stats>({
+    totalAlunos: 0,
+    totalProfessores: 0,
+    totalAulas: 0,
+    totalTurmas: 0
+  });
+  const [proximasAulas, setProximasAulas] = useState<Aula[]>([]);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const headers = getAuthHeaders();
+
+        // Buscar estatísticas
+        const [alunosRes, turmasRes, usuariosRes] = await Promise.all([
+          fetch(`${apiUrl}/alunos`, { headers }),
+          fetch(`${apiUrl}/turmas`, { headers }),
+          fetch(`${apiUrl}/usuarios`, { headers }).catch(() => ({ ok: false }))
+        ]);
+
+        const alunos = alunosRes.ok ? await alunosRes.json() : [];
+        const turmas = turmasRes.ok ? await turmasRes.json() : [];
+        const usuarios = usuariosRes.ok ? await usuariosRes.json() : [];
+
+        // Buscar aulas de todas as turmas
+        const aulasPromises = turmas.map((turma: any) =>
+          fetch(`${apiUrl}/turmas/${turma.id}/aulas`, { headers })
+            .then(res => res.ok ? res.json() : [])
+            .then(aulas => aulas.map((a: any) => ({ ...a, turma: { nome: turma.nome } })))
+        );
+
+        const aulasArrays = await Promise.all(aulasPromises);
+        const todasAulas = aulasArrays.flat();
+
+        // Filtrar próximas aulas (futuras)
+        const agora = new Date();
+        const aulasProximas = todasAulas
+          .filter((aula: Aula) => new Date(aula.dataAula) >= agora)
+          .sort((a: Aula, b: Aula) => 
+            new Date(a.dataAula).getTime() - new Date(b.dataAula).getTime()
+          )
+          .slice(0, 5);
+
+        setStats({
+          totalAlunos: alunos.length,
+          totalProfessores: usuarios.filter((u: any) => u.role === "PROFESSOR").length,
+          totalAulas: todasAulas.length,
+          totalTurmas: turmas.length
+        });
+
+        setProximasAulas(aulasProximas);
+
+      } catch (error) {
+        console.error("Erro ao carregar dashboard:", error);
+        toast({ 
+          variant: "destructive", 
+          title: "Erro", 
+          description: "Erro ao carregar dados do dashboard" 
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  const statsCards = [
     {
       title: "Total de Estudantes",
-      value: "342",
-      change: "+12%",
+      value: stats.totalAlunos,
       icon: GraduationCap,
       color: "text-primary",
       bgColor: "bg-primary/10"
     },
     {
       title: "Professores Ativos",
-      value: "24",
-      change: "+2",
+      value: stats.totalProfessores,
       icon: Users,
       color: "text-secondary",
       bgColor: "bg-secondary/10"
     },
     {
-      title: "Aulas Esta Semana",
-      value: "48",
-      change: "92%",
+      title: "Total de Aulas",
+      value: stats.totalAulas,
       icon: Calendar,
       color: "text-accent",
       bgColor: "bg-accent/10"
     },
     {
-      title: "Taxa de Presença",
-      value: "87%",
-      change: "+5%",
-      icon: TrendingUp,
+      title: "Turmas Ativas",
+      value: stats.totalTurmas,
+      icon: BookOpen,
       color: "text-primary",
       bgColor: "bg-primary/10"
     }
   ]
 
-  const recentActivities = [
-    {
-      title: "Nova turma de Matemática criada",
-      time: "2 horas atrás",
-      type: "success"
-    },
-    {
-      title: "Professor João adicionou nova aula",
-      time: "4 horas atrás", 
-      type: "info"
-    },
-    {
-      title: "15 novos estudantes matriculados",
-      time: "1 dia atrás",
-      type: "success"
-    },
-    {
-      title: "Relatório mensal gerado",
-      time: "2 dias atrás",
-      type: "default"
-    }
-  ]
-
-  const upcomingClasses = [
-    {
-      subject: "Matemática - Álgebra",
-      teacher: "Prof. Ana Silva",
-      time: "14:00 - 16:00",
-      room: "Sala A-101",
-      students: 28
-    },
-    {
-      subject: "Física - Mecânica", 
-      teacher: "Prof. Carlos Mendes",
-      time: "16:00 - 18:00",
-      room: "Sala B-203",
-      students: 32
-    },
-    {
-      subject: "Química - Orgânica",
-      teacher: "Prof. Maria Santos",
-      time: "19:00 - 21:00", 
-      room: "Lab. Química",
-      students: 25
-    }
-  ]
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -106,14 +154,11 @@ const Dashboard = () => {
             Visão geral do cursinho comunitário
           </p>
         </div>
-        <Button className="gradient-secondary">
-          Gerar Relatório
-        </Button>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
+        {statsCards.map((stat, index) => (
           <Card key={index} className="shadow-card">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -125,9 +170,6 @@ const Dashboard = () => {
                     <span className="text-2xl font-bold text-foreground">
                       {stat.value}
                     </span>
-                    <Badge variant="secondary" className="text-xs">
-                      {stat.change}
-                    </Badge>
                   </div>
                 </div>
                 <div className={`p-3 rounded-lg ${stat.bgColor}`}>
@@ -139,112 +181,56 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Próximas Aulas */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Próximas Aulas
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {upcomingClasses.map((classItem, index) => (
-              <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-border">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-md bg-primary/10">
-                    <BookOpen className="h-4 w-4 text-primary" />
+      {/* Próximas Aulas */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-primary" />
+            Próximas Aulas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {proximasAulas.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">Nenhuma aula agendada</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {proximasAulas.map((aula) => (
+                <div key={aula.id} className="flex items-center justify-between p-3 rounded-lg border border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-md bg-primary/10">
+                      <BookOpen className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{aula.titulo}</p>
+                      <p className="text-sm text-muted-foreground">{aula.turma.nome}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium text-foreground">{classItem.subject}</p>
-                    <p className="text-sm text-muted-foreground">{classItem.teacher}</p>
+                  <div className="text-right">
+                    <p className="text-sm font-medium text-foreground">
+                      {new Date(aula.dataAula).toLocaleDateString('pt-BR')}
+                    </p>
+                    {aula.horaInicio && (
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(aula.horaInicio).toLocaleTimeString('pt-BR', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}
+                        {aula.horaFim && ` - ${new Date(aula.horaFim).toLocaleTimeString('pt-BR', { 
+                          hour: '2-digit', 
+                          minute: '2-digit' 
+                        })}`}
+                      </p>
+                    )}
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-sm font-medium text-foreground">{classItem.time}</p>
-                  <p className="text-xs text-muted-foreground">{classItem.room}</p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Atividades Recentes */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-accent" />
-              Atividades Recentes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recentActivities.map((activity, index) => (
-              <div key={index} className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-primary mt-2 flex-shrink-0" />
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium text-foreground">
-                    {activity.title}
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    {activity.time}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Progress Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Meta de Estudantes</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Atual</span>
-              <span className="font-medium">342 / 400</span>
+              ))}
             </div>
-            <Progress value={85} className="h-2" />
-            <p className="text-xs text-muted-foreground">
-              85% da meta anual alcançada
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Aprovações ENEM</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Taxa atual</span>
-              <span className="font-medium">78%</span>
-            </div>
-            <Progress value={78} className="h-2" />
-            <p className="text-xs text-muted-foreground">
-              Meta: 80% de aprovações
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Frequência Geral</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Média mensal</span>
-              <span className="font-medium">87%</span>
-            </div>
-            <Progress value={87} className="h-2" />
-            <p className="text-xs text-muted-foreground">
-              Acima da média nacional
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

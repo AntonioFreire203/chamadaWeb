@@ -1,4 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom"
+import { useState, useEffect } from "react"
 import {
   BarChart3,
   GraduationCap,
@@ -9,6 +10,7 @@ import {
   BookOpen,
   BarChart2,
   School,
+  Shield,
   LogIn
 } from "lucide-react"
 
@@ -25,15 +27,15 @@ import {
 } from "@/components/ui/sidebar"
 
 const menuItems = [
-  { title: "Dashboard", url: "/", icon: BarChart3 },
-  { title: "Estudantes", url: "/estudantes", icon: GraduationCap },
-  { title: "Professores", url: "/professores", icon: Users },
-  { title: "Turmas", url: "/turmas", icon: School },
-  { title: "Calendário", url: "/calendario", icon: Calendar },
-  { title: "Chamada", url: "/chamada", icon: ClipboardCheck },
-  { title: "Histórico", url: "/historico", icon: FileText },
-  { title: "Relatórios", url: "/relatorios", icon: BarChart2 },
-  { title: "Login", url: "/login", icon: LogIn },
+  { title: "Dashboard", url: "/dashboard", icon: BarChart3, allowedRoles: ["ADMIN", "PROFESSOR", "COORDENADOR"] },
+  { title: "Estudantes", url: "/estudantes", icon: GraduationCap, allowedRoles: ["ADMIN", "PROFESSOR", "COORDENADOR"] },
+  { title: "Professores", url: "/professores", icon: Users, allowedRoles: ["ADMIN", "COORDENADOR"] },
+  { title: "Usuários", url: "/usuarios", icon: Shield, allowedRoles: ["ADMIN"] },
+  { title: "Turmas", url: "/turmas", icon: School, allowedRoles: ["ADMIN", "PROFESSOR", "COORDENADOR"] },
+  { title: "Calendário", url: "/calendario", icon: Calendar, allowedRoles: ["ADMIN", "PROFESSOR", "COORDENADOR"] },
+  { title: "Chamada", url: "/chamada", icon: ClipboardCheck, allowedRoles: ["ADMIN", "PROFESSOR", "COORDENADOR"] },
+  { title: "Histórico", url: "/historico", icon: FileText, allowedRoles: ["ADMIN", "PROFESSOR", "COORDENADOR"] },
+  { title: "Relatórios", url: "/relatorios", icon: BarChart2, allowedRoles: ["ADMIN", "COORDENADOR"] },
 ]
 
 export function AppSidebar() {
@@ -41,6 +43,19 @@ export function AppSidebar() {
   const location = useLocation()
   const currentPath = location.pathname
   const isCollapsed = state === "collapsed"
+  const [userRole, setUserRole] = useState<string | null>(null)
+
+  useEffect(() => {
+    const userStr = localStorage.getItem("user")
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        setUserRole(user.role)
+      } catch (error) {
+        console.error("Erro ao parsear usuário:", error)
+      }
+    }
+  }, [])
 
   const isActive = (path: string) => {
     if (path === "/") {
@@ -87,22 +102,24 @@ export function AppSidebar() {
 
           <SidebarGroupContent>
             <SidebarMenu className="space-y-1">
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className={getNavClasses(item.url)}
-                      title={isCollapsed ? item.title : undefined}
-                    >
-                      <item.icon className="h-4 w-4 flex-shrink-0" />
-                      <span className={`truncate ${isCollapsed ? 'sr-only' : ''}`}>
-                        {item.title}
-                      </span>
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {menuItems
+                .filter(item => !userRole || item.allowedRoles.includes(userRole))
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink 
+                        to={item.url} 
+                        className={getNavClasses(item.url)}
+                        title={isCollapsed ? item.title : undefined}
+                      >
+                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                        <span className={`truncate ${isCollapsed ? 'sr-only' : ''}`}>
+                          {item.title}
+                        </span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

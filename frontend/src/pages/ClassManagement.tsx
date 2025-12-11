@@ -53,6 +53,7 @@ interface ClassAPI {
 interface TeacherSimple {
   id: string;
   usuario: {
+    id: string;
     nome: string;
   };
 }
@@ -220,6 +221,12 @@ const ClassManagement = () => {
       const token = localStorage.getItem("token");
       if (!token) return;
 
+      // Encontrar o professor selecionado para pegar o idUsuario
+      const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
+      if (!selectedTeacher) {
+        throw new Error("Professor não encontrado");
+      }
+
       const response = await fetch(`/api/v1/turmas/${selectedClassId}/professores`, {
         method: "POST",
         headers: { 
@@ -227,12 +234,13 @@ const ClassManagement = () => {
           "Authorization": `Bearer ${token}`
         },
         body: JSON.stringify({
-          idProfessor: selectedTeacherId,
+          idUsuario: selectedTeacher.usuario.id,
           papel: "RESPONSAVEL"
         })
       });
 
-      if (!response.ok) throw new Error("Erro ao vincular professor");
+      const responseData = await response.json();
+      if (!response.ok) throw new Error(responseData.message || "Erro ao vincular professor");
 
       toast({ title: "Professor vinculado", description: "O professor foi atribuído à turma." });
       setIsTeacherDialogOpen(false);

@@ -1,11 +1,24 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
+import { Button } from "@/components/ui/button"
+import { LogOut, User } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 interface MainLayoutProps {
   children: React.ReactNode
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
+  const navigate = useNavigate()
+  
+  const handleLogout = () => {
+    localStorage.removeItem("token")
+    localStorage.removeItem("user")
+    navigate("/login")
+  }
+
+  const userName = localStorage.getItem("user") ? JSON.parse(localStorage.getItem("user")!).nome : "Usuário"
+
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="min-h-screen flex w-full">
@@ -24,6 +37,22 @@ export function MainLayout({ children }: MainLayoutProps) {
                   Sistema de Gestão Acadêmica
                 </p>
               </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{userName}</span>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLogout}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="h-4 w-4" />
+                Sair
+              </Button>
             </div>
           </header>
 

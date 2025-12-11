@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -15,7 +15,8 @@ import {
   BookOpen,
   TrendingUp,
   TrendingDown,
-  Eye
+  Eye,
+  Loader2
 } from "lucide-react"
 import {
   Select,
@@ -24,92 +25,105 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useToast } from "@/components/ui/use-toast"
+
+interface Turma {
+  id: string;
+  nome: string;
+  codigo: string | null;
+}
+
+interface Aula {
+  id: string;
+  idTurma: string;
+  titulo: string;
+  conteudo: string | null;
+  dataAula: string;
+  horaInicio?: string;
+  horaFim?: string;
+  createdAt: string;
+}
 
 const History = () => {
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedFilter, setSelectedFilter] = useState("all")
   const [selectedPeriod, setSelectedPeriod] = useState("last-month")
+  const [loading, setLoading] = useState(true)
+  const [turmas, setTurmas] = useState<Turma[]>([])
+  const [aulas, setAulas] = useState<Aula[]>([])
 
-  // Sample history data
-  const historyData = [
-    {
-      id: 1,
-      type: "attendance",
-      title: "Chamada realizada - Matemática",
-      description: "Presença registrada para 28 estudantes",
-      date: "2024-03-15",
-      time: "14:30",
-      user: "Prof. Ana Silva",
-      details: { present: 25, absent: 3, class: "Álgebra Linear" },
-      status: "completed"
-    },
-    {
-      id: 2,
-      type: "student",
-      title: "Novo estudante cadastrado",
-      description: "Marina Oliveira Costa foi adicionada ao sistema",
-      date: "2024-03-14",
-      time: "16:45",
-      user: "Coordenação",
-      details: { course: "Medicina", status: "Ativo" },
-      status: "completed"
-    },
-    {
-      id: 3,
-      type: "grade",
-      title: "Notas atualizadas - Física",
-      description: "Avaliação de Mecânica - 32 estudantes avaliados",
-      date: "2024-03-14",
-      time: "10:20",
-      user: "Prof. Carlos Mendes",
-      details: { average: 7.8, highest: 9.5, lowest: 5.2 },
-      status: "completed"
-    },
-    {
-      id: 4,
+  // Buscar turmas e aulas
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          window.location.href = "/login";
+          return;
+        }
+
+        const headers = { "Authorization": `Bearer ${token}` };
+
+        // Buscar turmas
+        const turmasRes = await fetch("/api/v1/turmas", { headers });
+        if (!turmasRes.ok) throw new Error("Erro ao buscar turmas");
+        const turmasData = await turmasRes.json();
+        setTurmas(turmasData);
+
+        // Criar um map de turmas por ID para facilitar o acesso
+        const turmasMap = new Map(turmasData.map((t: Turma) => [t.id, t]));
+
+        // Buscar aulas de todas as turmas
+        const aulasPromises = turmasData.map((turma: Turma) =>
+          fetch(`/api/v1/turmas/${turma.id}/aulas`, { headers })
+            .then(res => res.ok ? res.json() : [])
+            .then(aulas => aulas.map((aula: Aula) => ({
+              ...aula,
+              turma: turmasMap.get(aula.idTurma)
+            })))
+        );
+
+        const aulasArrays = await Promise.all(aulasPromises);
+        const todasAulas = aulasArrays.flat();
+        setAulas(todasAulas);
+
+      } catch (error) {
+        console.error(error);
+        toast({ variant: "destructive", title: "Erro", description: "Erro ao carregar histórico." });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  // Converter aulas em formato de histórico
+  const historyData = aulas
+    .filter(aula => aula.turma) // Filtrar aulas que têm turma associada
+    .map(aula => ({
+      id: aula.id,
       type: "class",
-      title: "Aula cancelada - Química",
-      description: "Aula de Química Orgânica cancelada por motivo de saúde",
-      date: "2024-03-13",
-      time: "18:00",
-      user: "Prof. Maria Santos",
-      details: { reason: "Doença do professor", rescheduled: "2024-03-20" },
-      status: "cancelled"
-    },
-    {
-      id: 5,
-      type: "system",
-      title: "Relatório mensal gerado",
-      description: "Relatório de frequência e desempenho - Fevereiro 2024",
-      date: "2024-03-01",
-      time: "09:00",
-      user: "Sistema",
-      details: { period: "Fevereiro 2024", students: 342, attendance: "87%" },
+      title: `Aula - ${aula.turma.nome}`,
+      description: aula.titulo || "Sem título",
+      date: new Date(aula.dataAula).toLocaleDateString('pt-BR'),
+      time: aula.horaInicio 
+        ? new Date(aula.horaInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+        : new Date(aula.dataAula).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      user: "Professor",
+      details: { 
+        class: aula.turma.nome, 
+        code: aula.turma.codigo,
+        description: aula.conteudo 
+      },
       status: "completed"
-    },
-    {
-      id: 6,
-      type: "teacher",
-      title: "Professor adicionado",
-      description: "João Pedro Costa foi cadastrado como professor",
-      date: "2024-02-28",
-      time: "14:15",
-      user: "Coordenação",
-      details: { subjects: ["História", "Geografia"], experience: "15 anos" },
-      status: "completed"
-    },
-    {
-      id: 7,
-      type: "exam",
-      title: "Simulado ENEM aplicado",
-      description: "Simulado de Fevereiro aplicado para 150 estudantes",
-      date: "2024-02-25",
-      time: "08:00",
-      user: "Coordenação",
-      details: { participants: 150, completion: "94%", average: 520 },
-      status: "completed"
-    }
-  ]
+    })).sort((a, b) => {
+    // Ordenar do mais recente para o mais antigo
+    const dateA = new Date(a.date.split('/').reverse().join('-'));
+    const dateB = new Date(b.date.split('/').reverse().join('-'));
+    return dateB.getTime() - dateA.getTime();
+  })
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -181,6 +195,17 @@ const History = () => {
     student: historyData.filter(h => h.type === "student").length,
     grade: historyData.filter(h => h.type === "grade").length,
     class: historyData.filter(h => h.type === "class").length,
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[60vh]">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Carregando histórico...</p>
+        </div>
+      </div>
+    )
   }
 
   return (

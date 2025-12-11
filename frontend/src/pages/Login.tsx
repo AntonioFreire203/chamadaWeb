@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Mail, Lock, GraduationCap } from "lucide-react";
+import { Link } from "react-router-dom";
 import { login } from "@/services/auth";
 
 const Login = () => {
@@ -25,7 +26,7 @@ const Login = () => {
 
       console.log("Login realizado com sucesso:", response);
 
-      window.location.href = "/";
+      window.location.href = "/dashboard";
 
     } catch (err: any) {
       console.error("Erro no login:", err.message);
@@ -102,6 +103,10 @@ const Login = () => {
               <Button type="submit" className="w-full" variant="secondary" disabled={loading}>
                 {loading ? "Entrando..." : "Entrar"}
               </Button>
+
+              <div className="text-center text-sm text-muted-foreground mt-4">
+                <p>Entre em contato com o administrador para criar uma conta.</p>
+              </div>
 
             </form>
           </CardContent>

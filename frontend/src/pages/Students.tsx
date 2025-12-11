@@ -66,8 +66,6 @@ const Students = () => {
   const [newStudent, setNewStudent] = useState({
     nome: "",
     email: "",
-    senha: "",
-    matricula: "",
     nascimento: ""
   })
 
@@ -75,9 +73,7 @@ const Students = () => {
   const [isUpdating, setIsUpdating] = useState(false)
   const [editingStudent, setEditingStudent] = useState({
     id: "",
-    nome: "",      
-    email: "",    
-    matricula: "",
+    nome: "",
     nascimento: ""
   })
 
@@ -120,13 +116,16 @@ const Students = () => {
         return;
       }
 
+      // Gerar senha automaticamente (alunos não fazem login)
+      const senhaGerada = "aluno123"; // Senha padrão
+
       const authRes = await fetch("/api/v1/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           nome: newStudent.nome,
           email: newStudent.email,
-          senha: newStudent.senha,
+          senha: senhaGerada,
           role: "ALUNO"
         })
       });
@@ -142,7 +141,6 @@ const Students = () => {
         },
         body: JSON.stringify({
           idUsuario: authData.usuario.id,
-          matricula: newStudent.matricula || undefined,
           nascimento: newStudent.nascimento ? new Date(newStudent.nascimento).toISOString() : undefined
         })
       });
@@ -151,7 +149,7 @@ const Students = () => {
 
       toast({ title: "Sucesso", description: "Estudante cadastrado com sucesso!" });
       setIsCreateOpen(false);
-      setNewStudent({ nome: "", email: "", senha: "", matricula: "", nascimento: "" });
+      setNewStudent({ nome: "", email: "", nascimento: "" });
       fetchStudents();
 
     } catch (error) {
@@ -178,8 +176,6 @@ const Students = () => {
     setEditingStudent({
       id: student.id,
       nome: student.usuario.nome,
-      email: student.usuario.email,
-      matricula: student.matricula || "",
       nascimento: dataNascimentoFormatada
     });
     setIsEditOpen(true);
@@ -201,7 +197,6 @@ const Students = () => {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          matricula: editingStudent.matricula,
           nascimento: editingStudent.nascimento ? new Date(editingStudent.nascimento).toISOString() : undefined
         })
       });
@@ -294,45 +289,45 @@ const Students = () => {
               <DialogDescription>Crie um usuário e o perfil de estudante.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateStudent} className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="nome">Nome Completo</Label>
-                  <Input 
-                    id="nome" required value={newStudent.nome}
-                    onChange={(e) => setNewStudent({...newStudent, nome: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="matricula">Matrícula</Label>
-                  <Input 
-                    id="matricula" value={newStudent.matricula}
-                    onChange={(e) => setNewStudent({...newStudent, matricula: e.target.value})}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome Completo</Label>
+                <Input 
+                  id="nome" 
+                  required 
+                  value={newStudent.nome}
+                  onChange={(e) => setNewStudent({...newStudent, nome: e.target.value})}
+                  placeholder="Ex: João da Silva"
+                />
               </div>
+              
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input 
-                  id="email" type="email" required value={newStudent.email}
+                  id="email" 
+                  type="email"
+                  required 
+                  value={newStudent.email}
                   onChange={(e) => setNewStudent({...newStudent, email: e.target.value})}
+                  placeholder="Ex: joao.silva@email.com"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="senha">Senha</Label>
-                  <Input 
-                    id="senha" type="password" required minLength={6} value={newStudent.senha}
-                    onChange={(e) => setNewStudent({...newStudent, senha: e.target.value})}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="nascimento">Nascimento</Label>
-                  <Input 
-                    id="nascimento" type="date" value={newStudent.nascimento}
-                    onChange={(e) => setNewStudent({...newStudent, nascimento: e.target.value})}
-                  />
-                </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="nascimento">Data de Nascimento</Label>
+                <Input 
+                  id="nascimento" 
+                  type="date" 
+                  required
+                  value={newStudent.nascimento}
+                  onChange={(e) => setNewStudent({...newStudent, nascimento: e.target.value})}
+                />
               </div>
+
+              <div className="bg-muted/50 p-3 rounded-md text-sm text-muted-foreground">
+                <p className="font-medium mb-1">ℹ️ Informação:</p>
+                <p>Os estudantes não fazem login no sistema. A senha é gerada automaticamente.</p>
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancelar</Button>
                 <Button type="submit" disabled={isCreating}>
@@ -353,28 +348,25 @@ const Students = () => {
           </DialogHeader>
           <form onSubmit={handleUpdateStudent} className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="edit-nome">Nome (Leitura)</Label>
-              <Input id="edit-nome" value={editingStudent.nome} disabled className="bg-muted" />
+              <Label htmlFor="edit-nome">Nome Completo</Label>
+              <Input 
+                id="edit-nome" 
+                value={editingStudent.nome} 
+                disabled 
+                className="bg-muted" 
+              />
+              <p className="text-xs text-muted-foreground">O nome não pode ser alterado aqui</p>
             </div>
             
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-matricula">Matrícula</Label>
-                <Input 
-                  id="edit-matricula" 
-                  value={editingStudent.matricula}
-                  onChange={(e) => setEditingStudent({...editingStudent, matricula: e.target.value})}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="edit-nascimento">Nascimento</Label>
-                <Input 
-                  id="edit-nascimento" 
-                  type="date" 
-                  value={editingStudent.nascimento}
-                  onChange={(e) => setEditingStudent({...editingStudent, nascimento: e.target.value})}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-nascimento">Data de Nascimento</Label>
+              <Input 
+                id="edit-nascimento" 
+                type="date" 
+                required
+                value={editingStudent.nascimento}
+                onChange={(e) => setEditingStudent({...editingStudent, nascimento: e.target.value})}
+              />
             </div>
 
             <DialogFooter>

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +12,8 @@ import {
   XCircle,
   Clock,
   Save,
-  Download
+  Download,
+  Loader2
 } from "lucide-react"
 import {
   Select,
@@ -21,63 +22,238 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
+import { apiUrl, getAuthHeaders } from "@/services/api"
+
+interface Turma {
+  id: string;
+  nome: string;
+  codigo: string | null;
+  anoLetivo: number;
+  periodo: string | null;
+}
+
+interface Aula {
+  id: string;
+  titulo: string;
+  dataAula: string;
+  horaInicio?: string;
+  horaFim?: string;
+}
+
+interface Aluno {
+  id: string;
+  aluno: {
+    id: string;
+    usuario: {
+      nome: string;
+    }
+  }
+}
+
+interface StudentAttendance {
+  id: string;
+  name: string;
+  status: 'PRESENTE' | 'AUSENTE' | 'ATRASO' | 'JUSTIFICADA';
+  observacao?: string;
+}
 
 const Attendance = () => {
+  const { toast } = useToast()
   const [selectedClass, setSelectedClass] = useState("")
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedAula, setSelectedAula] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [loadingAulas, setLoadingAulas] = useState(false)
+  const [loadingStudents, setLoadingStudents] = useState(false)
+  const [saving, setSaving] = useState(false)
   
-  // Sample classes data
-  const classes = [
-    { id: "mat-alg", name: "Matemática - Álgebra Linear", teacher: "Prof. Ana Silva" },
-    { id: "fis-mec", name: "Física - Mecânica", teacher: "Prof. Carlos Mendes" },
-    { id: "qui-org", name: "Química - Orgânica", teacher: "Prof. Maria Santos" },
-    { id: "his-bra", name: "História do Brasil", teacher: "Prof. João Costa" },
-    { id: "por-lit", name: "Português - Literatura", teacher: "Prof. Beatriz Lima" }
-  ]
+  const [classes, setClasses] = useState<Turma[]>([])
+  const [aulas, setAulas] = useState<Aula[]>([])
+  const [students, setStudents] = useState<StudentAttendance[]>([])
 
-  // Sample students data with attendance state
-  const [students, setStudents] = useState([
-    { id: 1, name: "Ana Carolina Silva", present: true, justified: false },
-    { id: 2, name: "Carlos Eduardo Santos", present: true, justified: false },
-    { id: 3, name: "Marina Oliveira Costa", present: false, justified: true },
-    { id: 4, name: "João Pedro Almeida", present: false, justified: false },
-    { id: 5, name: "Beatriz Ferreira Lima", present: true, justified: false },
-    { id: 6, name: "Lucas Silva Rodrigues", present: true, justified: false },
-    { id: 7, name: "Gabriela Santos Melo", present: false, justified: false },
-    { id: 8, name: "Pedro Henrique Costa", present: true, justified: false },
-    { id: 9, name: "Julia Oliveira Nunes", present: true, justified: false },
-    { id: 10, name: "Rafael Almeida Souza", present: false, justified: true }
-  ])
+  // Buscar turmas
+  useEffect(() => {
+    const fetchClasses = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/turmas`, {
+          headers: getAuthHeaders()
+        });
 
-  const toggleAttendance = (studentId: number) => {
+        if (response.status === 403 || response.status === 401) {
+          toast({ variant: "destructive", title: "Sessão expirada" });
+          localStorage.removeItem("token");
+          setTimeout(() => window.location.href = "/login", 1500);
+          return;
+        }
+
+        if (!response.ok) throw new Error("Erro ao buscar turmas");
+        
+        const data = await response.json();
+        setClasses(data);
+      } catch (error) {
+        console.error(error);
+        toast({ variant: "destructive", title: "Erro", description: "Erro ao carregar turmas." });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClasses();
+  }, []);
+
+  // Buscar aulas quando selecionar uma turma
+  useEffect(() => {
+    if (!selectedClass) {
+      setAulas([]);
+      setSelectedAula("");
+      return;
+    }
+
+    const fetchAulas = async () => {
+      setLoadingAulas(true);
+      try {
+        const response = await fetch(`${apiUrl}/turmas/${selectedClass}/aulas`, {
+          headers: getAuthHeaders()
+        });
+
+        if (!response.ok) throw new Error("Erro ao buscar aulas");
+        
+        const data = await response.json();
+        setAulas(data);
+      } catch (error) {
+        console.error(error);
+        toast({ variant: "destructive", title: "Erro", description: "Erro ao carregar aulas." });
+      } finally {
+        setLoadingAulas(false);
+      }
+    };
+
+    fetchAulas();
+  }, [selectedClass]);
+
+  // Buscar alunos e presenças quando selecionar uma aula
+  useEffect(() => {
+    if (!selectedClass || !selectedAula) {
+      setStudents([]);
+      return;
+    }
+
+    const fetchStudentsAndPresencas = async () => {
+      setLoadingStudents(true);
+      try {
+        // Buscar alunos da turma
+        const alunosResponse = await fetch(`${apiUrl}/turmas/${selectedClass}/alunos`, {
+          headers: getAuthHeaders()
+        });
+
+        if (!alunosResponse.ok) throw new Error("Erro ao buscar alunos");
+        
+        const alunosData: Aluno[] = await alunosResponse.json();
+
+        // Buscar presenças já registradas para esta aula
+        const presencasResponse = await fetch(`${apiUrl}/aulas/${selectedAula}/presencas`, {
+          headers: getAuthHeaders()
+        });
+
+        const presencasData = presencasResponse.ok ? await presencasResponse.json() : [];
+        
+        // Mapear presenças por aluno
+        const presencasMap = new Map(
+          presencasData.map((p: any) => [p.idAluno, p])
+        );
+        
+        // Converter para formato de attendance
+        const studentsData: StudentAttendance[] = alunosData.map(item => {
+          const presenca = presencasMap.get(item.aluno.id);
+          return {
+            id: item.aluno.id,
+            name: item.aluno.usuario.nome,
+            status: presenca?.status || 'PRESENTE',
+            observacao: presenca?.observacao
+          };
+        });
+
+        setStudents(studentsData);
+      } catch (error) {
+        console.error(error);
+        toast({ variant: "destructive", title: "Erro", description: "Erro ao carregar dados." });
+      } finally {
+        setLoadingStudents(false);
+      }
+    };
+
+    fetchStudentsAndPresencas();
+  }, [selectedClass, selectedAula]);
+
+  const updateStudentStatus = (studentId: string, status: StudentAttendance['status']) => {
     setStudents(prev => prev.map(student => 
       student.id === studentId 
-        ? { ...student, present: !student.present, justified: false }
-        : student
-    ))
-  }
-
-  const toggleJustified = (studentId: number) => {
-    setStudents(prev => prev.map(student => 
-      student.id === studentId && !student.present
-        ? { ...student, justified: !student.justified }
+        ? { ...student, status }
         : student
     ))
   }
 
   const markAllPresent = () => {
-    setStudents(prev => prev.map(student => ({ ...student, present: true, justified: false })))
+    setStudents(prev => prev.map(student => ({ ...student, status: 'PRESENTE' as const })))
   }
 
   const markAllAbsent = () => {
-    setStudents(prev => prev.map(student => ({ ...student, present: false, justified: false })))
+    setStudents(prev => prev.map(student => ({ ...student, status: 'AUSENTE' as const })))
   }
 
-  const presentCount = students.filter(s => s.present).length
-  const absentCount = students.filter(s => !s.present && !s.justified).length
-  const justifiedCount = students.filter(s => s.justified).length
+  const saveAttendance = async () => {
+    if (!selectedAula) {
+      toast({ variant: "destructive", title: "Erro", description: "Selecione uma aula" });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const presencas = students.map(student => ({
+        idAluno: student.id,
+        status: student.status,
+        observacao: student.observacao
+      }));
+
+      const response = await fetch(`${apiUrl}/aulas/${selectedAula}/presencas`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ presencas })
+      });
+
+      if (!response.ok) throw new Error("Erro ao salvar presenças");
+
+      toast({ 
+        title: "Sucesso!", 
+        description: `Presença registrada para ${students.length} alunos.` 
+      });
+    } catch (error) {
+      console.error(error);
+      toast({ 
+        variant: "destructive", 
+        title: "Erro", 
+        description: "Erro ao registrar chamada." 
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const presentCount = students.filter(s => s.status === 'PRESENTE').length
+  const absentCount = students.filter(s => s.status === 'AUSENTE').length
+  const justifiedCount = students.filter(s => s.status === 'JUSTIFICADA').length
+  const atrasoCount = students.filter(s => s.status === 'ATRASO').length
   const totalStudents = students.length
-  const attendancePercentage = Math.round((presentCount / totalStudents) * 100)
+  const attendancePercentage = totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-muted-foreground">Carregando...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -89,16 +265,7 @@ const Attendance = () => {
             Registre a presença dos estudantes
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Relatório
-          </Button>
-          <Button className="gradient-accent">
-            <Save className="h-4 w-4 mr-2" />
-            Salvar Chamada
-          </Button>
-        </div>
+
       </div>
 
       {/* Class Selection */}
@@ -112,17 +279,14 @@ const Attendance = () => {
               <label className="text-sm font-medium text-foreground mb-2 block">
                 Turma
               </label>
-              <Select value={selectedClass} onValueChange={setSelectedClass}>
+              <Select value={selectedClass} onValueChange={setSelectedClass} disabled={classes.length === 0}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma turma" />
+                  <SelectValue placeholder={classes.length === 0 ? "Nenhuma turma cadastrada" : "Selecione uma turma"} />
                 </SelectTrigger>
                 <SelectContent>
                   {classes.map((cls) => (
                     <SelectItem key={cls.id} value={cls.id}>
-                      <div>
-                        <div className="font-medium">{cls.name}</div>
-                        <div className="text-sm text-muted-foreground">{cls.teacher}</div>
-                      </div>
+                      {cls.nome} {cls.codigo ? `(${cls.codigo})` : ""} - {cls.anoLetivo}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -130,20 +294,53 @@ const Attendance = () => {
             </div>
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">
-                Data da Aula
+                Aula
               </label>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-              />
+              {loadingAulas ? (
+                <div className="flex h-10 items-center px-3 border rounded-md">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span className="text-sm text-muted-foreground">Carregando...</span>
+                </div>
+              ) : (
+                <Select value={selectedAula} onValueChange={setSelectedAula} disabled={!selectedClass || aulas.length === 0}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={!selectedClass ? "Selecione uma turma primeiro" : aulas.length === 0 ? "Nenhuma aula cadastrada" : "Selecione uma aula"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {aulas.map((aula) => (
+                      <SelectItem key={aula.id} value={aula.id}>
+                        {aula.titulo} - {new Date(aula.dataAula).toLocaleDateString('pt-BR')}
+                        {aula.horaInicio && ` ${new Date(aula.horaInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {selectedClass && (
+      {loadingStudents && (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-2 text-muted-foreground">Carregando alunos...</span>
+        </div>
+      )}
+
+      {selectedClass && selectedAula && !loadingStudents && students.length === 0 && (
+        <Card className="shadow-card">
+          <CardContent className="p-12 text-center">
+            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Nenhum aluno matriculado</h3>
+            <p className="text-muted-foreground">
+              Esta turma ainda não possui alunos matriculados.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {selectedClass && selectedAula && !loadingStudents && students.length > 0 && (
         <>
           {/* Statistics */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -202,6 +399,20 @@ const Attendance = () => {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="shadow-card">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-warning/10">
+                    <Clock className="h-4 w-4 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Atrasos</p>
+                    <p className="text-xl font-semibold">{atrasoCount}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           {/* Attendance Card */}
@@ -245,34 +456,22 @@ const Attendance = () => {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                      {/* Justified checkbox (only show if absent) */}
-                      {!student.present && (
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`justified-${student.id}`}
-                            checked={student.justified}
-                            onCheckedChange={() => toggleJustified(student.id)}
-                          />
-                          <label 
-                            htmlFor={`justified-${student.id}`}
-                            className="text-sm text-muted-foreground cursor-pointer"
-                          >
-                            Justificada
-                          </label>
-                        </div>
-                      )}
-
+                    <div className="flex items-center gap-3">
                       {/* Status Badge */}
-                      {student.present ? (
+                      {student.status === 'PRESENTE' ? (
                         <Badge className="bg-accent text-accent-foreground">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           Presente
                         </Badge>
-                      ) : student.justified ? (
+                      ) : student.status === 'JUSTIFICADA' ? (
                         <Badge className="bg-secondary/20 text-secondary">
                           <Clock className="h-3 w-3 mr-1" />
                           Justificada
+                        </Badge>
+                      ) : student.status === 'ATRASO' ? (
+                        <Badge className="bg-warning/20 text-warning">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Atraso
                         </Badge>
                       ) : (
                         <Badge variant="destructive">
@@ -281,26 +480,49 @@ const Attendance = () => {
                         </Badge>
                       )}
 
-                      {/* Attendance Toggle */}
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`present-${student.id}`}
-                          checked={student.present}
-                          onCheckedChange={() => toggleAttendance(student.id)}
-                        />
-                        <label 
-                          htmlFor={`present-${student.id}`}
-                          className="text-sm font-medium text-foreground cursor-pointer"
-                        >
-                          Presente
-                        </label>
-                      </div>
+                      {/* Status Selector */}
+                      <Select 
+                        value={student.status} 
+                        onValueChange={(value) => updateStudentStatus(student.id, value as StudentAttendance['status'])}
+                      >
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PRESENTE">Presente</SelectItem>
+                          <SelectItem value="AUSENTE">Ausente</SelectItem>
+                          <SelectItem value="ATRASO">Atraso</SelectItem>
+                          <SelectItem value="JUSTIFICADA">Justificada</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
                 ))}
               </div>
             </CardContent>
           </Card>
+
+          {/* Botão Registrar Chamada */}
+          <div className="flex justify-center gap-3">
+            <Button 
+              size="lg" 
+              className="gradient-primary min-w-[200px]"
+              onClick={saveAttendance}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5 mr-2" />
+                  Registrar Chamada
+                </>
+              )}
+            </Button>
+          </div>
         </>
       )}
 
@@ -309,10 +531,10 @@ const Attendance = () => {
           <CardContent className="p-12 text-center">
             <ClipboardCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">
-              Selecione uma turma
+              Selecione uma turma e aula
             </h3>
             <p className="text-muted-foreground">
-              Escolha uma turma e data para iniciar a chamada
+              Escolha uma turma e aula para iniciar a chamada
             </p>
           </CardContent>
         </Card>
