@@ -7,6 +7,10 @@ export type Role = "ADMIN" | "COORDENADOR" | "PROFESSOR" | "ALUNO";
 export const Actions = {
   USER_READ_SELF: "USER_READ_SELF",
 
+  USUARIO_READ: "USUARIO_READ",
+  USUARIO_UPDATE: "USUARIO_UPDATE",
+  USUARIO_DELETE: "USUARIO_DELETE",
+
   ALUNO_CREATE: "ALUNO_CREATE",
   ALUNO_READ: "ALUNO_READ",
   ALUNO_UPDATE: "ALUNO_UPDATE",
@@ -42,6 +46,9 @@ export type Action = (typeof Actions)[keyof typeof Actions];
 export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
   ADMIN: [
     Actions.USER_READ_SELF,
+    Actions.USUARIO_READ,
+    Actions.USUARIO_UPDATE,
+    Actions.USUARIO_DELETE,
     Actions.ALUNO_CREATE,
     Actions.ALUNO_READ,
     Actions.ALUNO_UPDATE,
@@ -68,6 +75,8 @@ export const RolePermissions: Record<Role, ReadonlyArray<Action>> = {
   ],
   COORDENADOR: [
     Actions.USER_READ_SELF,
+    Actions.USUARIO_READ,
+    Actions.USUARIO_UPDATE,
     Actions.ALUNO_CREATE,
     Actions.ALUNO_READ,
     Actions.ALUNO_UPDATE,

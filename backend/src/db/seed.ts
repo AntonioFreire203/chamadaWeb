@@ -7,20 +7,22 @@ async function seed() {
   try {
     logger.info("🌱 Iniciando seed do banco de dados...");
 
-    // 1. Criar usuário ADMIN
+    // 1. Criar usuário ADMIN padrão
     const adminPassword = await bcrypt.hash("admin123", 10);
     const admin = await prisma.usuario.upsert({
-      where: { email: "admin@chamadaweb.com" },
+      where: { email: "admin@teste.com" },
       update: {},
       create: {
         nome: "Administrador",
-        email: "admin@chamadaweb.com",
+        email: "admin@teste.com",
         senhaHash: adminPassword,
         role: "ADMIN",
         ativo: true,
       },
     });
-    logger.info(`✅ Usuário ADMIN criado: ${admin.email}`);
+    logger.info(`✅ Usuário ADMIN padrão criado: ${admin.email}`);
+    logger.info(`   📧 Email: admin@teste.com`);
+    logger.info(`   🔑 Senha: admin123`);
 
     // 2. Criar usuário COORDENADOR
     const coordPassword = await bcrypt.hash("coord123", 10);

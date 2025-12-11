@@ -1,261 +1,438 @@
-# Escopo Técnico – ChamadaWeb (Backend/API)
+# 🎓 ChamadaWeb - Sistema de Gestão de Cursinho
 
-## 1) Objetivo
+Sistema completo para gestão de cursinhos comunitários com controle de turmas, aulas, presenças e relatórios.
 
-Construir um backend Node.js + Express + TypeScript + PostgreSQL para gestão de turmas, aulas e presenças. Arquitetura MVC expandida: Controllers → Services → Repositórios/Modelos, com UUID em todas as entidades. Entidade de AULA explícita; PRESENCA referencia id_aula (não usar data_aula direto em presença).
+## 📋 Índice
 
-## 2) Entidades (MVP)
+- [Tecnologias](#-tecnologias)
+- [Configuração Inicial](#️-configuração-inicial)
+- [Como Rodar o Projeto](#-como-rodar-o-projeto)
+  - [Opção 1: Com Docker](#opção-1-com-docker-recomendado)
+  - [Opção 2: Sem Docker](#opção-2-sem-docker)
+- [Credenciais Padrão](#-credenciais-padrão)
+- [Estrutura do Projeto](#-estrutura-do-projeto)
+- [Endpoints da API](#-endpoints-da-api)
 
-  1-USUARIO (credenciais, perfis/roles)
+---
 
-  2-ALUNO
+## 🚀 Tecnologias
 
-  3-PROFESSOR
+### Backend
+- **Node.js 20+** - Runtime JavaScript
+- **Express** - Framework web
+- **TypeScript** - Tipagem estática
+- **PostgreSQL 14+** - Banco de dados
+- **Prisma ORM** - ORM para PostgreSQL
+- **JWT** - Autenticação
+- **Zod** - Validação de dados
+- **Vitest** - Testes
 
-  4-TURMA
+### Frontend
+- **React 18** - Biblioteca UI
+- **TypeScript** - Tipagem estática
+- **Vite** - Build tool
+- **TailwindCSS** - Estilização
+- **Shadcn/ui** - Componentes UI
 
-  5-AULA (data/hora/assunto vinculado à turma)
+---
 
-  6-TURMA_ALUNO (matrícula do aluno na turma)
+## ⚙️ Configuração Inicial
 
-  7-TURMA_PROFESSOR (alocação do professor na turma)
+### Credenciais de Administrador Padrão
 
-  8-PRESENCA (status por aluno em uma AULA)
-
-
-## 3) Regras de negócio (MVP)
-
-  3.1)Um USUARIO pode ter papéis: ADMIN, PROFESSOR, COODENADOR (opcional), ALUNO (se houver portal).
-
-  3.2)AULA só pode ser criada por PROFESSOR da turma ou ADMIN.
-
-  3.3)PRESENCA: valores PRESENTE | AUSENTE | ATRASO | JUSTIFICADA + carimbo de hora.
-
-  3.4)TURMA_ALUNO impede duplicidade (único por id_turma + id_aluno).
-
-  3.5)PRESENCA única por id_aula + id_aluno.
-
-## 4) Stack & padrões
-
-  4.1)Node 20+, Express, TypeScript
-
-  4.2)PostgreSQL 14+
-
-  4.3)ORM Prisma (ou pg nativo; decidir abaixo)
-
-  4.4)Zod para validação de DTOs
-
-  4.5)JWT (RS256 ou HS256) + RBAC
-
-  4.6)dotenv, pino (logs), helmet, cors
-
-  4.7)Testes: Vitest/Jest + Supertest
-
-  4.8)Lint/format: ESLint + Prettier
-
-  4.9)Doc: OpenAPI 3.0 (Swagger)
-
-  5)Estrutura de pastas
+Para acessar o sistema pela primeira vez, use as credenciais padrão do administrador:
 
 ```
-chamadaweb/
-└─ backend/
-   ├─ src/
-   │  ├─ app.ts
-   │  ├─ server.ts
-   │  ├─ config/env.ts
-   │  ├─ domain/enums.ts
-   │  ├─ dtos/
-   │  │  ├─ auth.dto.ts
-   │  │  ├─ aula.dto.ts
-   │  │  ├─ presenca.dto.ts
-   │  │  └─ turma.dto.ts
-   │  ├─ middlewares/
-   │  │  ├─ auth.ts
-   │  │  ├─ rbac.ts
-   │  │  └─ validate.ts
-   │  ├─ utils/
-   │  │  ├─ errors.ts
-   │  │  └─ logger.ts
-   │  ├─ db/prisma.ts
-   │  ├─ repositories/
-   │  │  ├─ aula.repo.ts
-   │  │  ├─ presenca.repo.ts
-   │  │  ├─ turma.repo.ts
-   │  │  ├─ turmaAluno.repo.ts
-   │  │  └─ usuario.repo.ts
-   │  ├─ services/
-   │  │  ├─ aula.service.ts
-   │  │  ├─ presenca.service.ts
-   │  │  ├─ turma.service.ts
-   │  │  └─ auth.service.ts
-   │  ├─ controllers/
-   │  │  ├─ aula.controller.ts
-   │  │  ├─ presenca.controller.ts
-   │  │  ├─ turma.controller.ts
-   │  │  └─ auth.controller.ts
-   │  ├─ routes/
-   │  │  ├─ index.ts
-   │  │  ├─ aula.routes.ts
-   │  │  ├─ presenca.routes.ts
-   │  │  ├─ turma.routes.ts
-   │  │  └─ auth.routes.ts
-   │  └─ docs/openapi.yaml
-   ├─ prisma/
-   │  └─ schema.prisma
-   ├─ tests/
-   │  ├─ auth.int.test.ts
-   │  └─ aula.int.test.ts
-   ├─ .env.example
-   ├─ docker-compose.yml
-   ├─ Dockerfile
-   ├─ package.json
-   ├─ tsconfig.json
-   └─ README.md
+Email: admin@teste.com
+Senha: admin123
 ```
 
+**⚠️ IMPORTANTE:** Após o primeiro acesso, altere essas credenciais por questões de segurança.
 
+### Sistema de Registro
 
-## 6)Modelo de dados (DDL inicial – Postgres)
+- ❌ **Registro público desabilitado**: A rota `/register` foi removida para segurança
+- ✅ **Apenas administradores podem criar usuários**: Acesse `/usuarios` (logado como ADMIN)
+- 📧 **Professores recebem email**: Após criação, professores recebem email com link para definir senha
+- 🔐 **Roles disponíveis**: ADMIN, COORDENADOR, PROFESSOR
 
--- extensões
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+---
 
-  -- USUARIO
-  CREATE TABLE usuario (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome text NOT NULL,
-    email text NOT NULL UNIQUE,
-    senha_hash text NOT NULL,
-    role text NOT NULL CHECK (role IN ('ADMIN','PROFESSOR','GESTOR','ALUNO')),
-    ativo boolean NOT NULL DEFAULT true,
-    created_at timestamptz NOT NULL DEFAULT now(),
-    updated_at timestamptz NOT NULL DEFAULT now()
-  );
+## 🐳 Como Rodar o Projeto
 
-  -- ALUNO / PROFESSOR (perfil vinculado a usuario)
-  CREATE TABLE aluno (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_usuario uuid NOT NULL UNIQUE REFERENCES usuario(id) ON DELETE CASCADE,
-    matricula text UNIQUE,
-    data_nascimento date
-  );
+### Opção 1: Com Docker (Recomendado)
 
-  CREATE TABLE professor (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_usuario uuid NOT NULL UNIQUE REFERENCES usuario(id) ON DELETE CASCADE,
-    apelido text
-  );
+#### Pré-requisitos
+- [Docker](https://www.docker.com/get-started) instalado
+- [Docker Compose](https://docs.docker.com/compose/install/) instalado
 
-  -- TURMA
-  CREATE TABLE turma (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    nome text NOT NULL,
-    codigo text UNIQUE,
-    ano_letivo int NOT NULL,
-    periodo text, -- ex: 2025.1
-    ativo boolean NOT NULL DEFAULT true,
-    created_at timestamptz NOT NULL DEFAULT now()
-  );
+#### Passos
 
-  -- Vínculos
-  CREATE TABLE turma_aluno (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_turma uuid NOT NULL REFERENCES turma(id) ON DELETE CASCADE,
-    id_aluno uuid NOT NULL REFERENCES aluno(id) ON DELETE CASCADE,
-    data_entrada date DEFAULT now(),
-    UNIQUE (id_turma, id_aluno)
-  );
+1. **Clone o repositório**
+```bash
+git clone <url-do-repositorio>
+cd chamadaWeb
+```
 
-  CREATE TABLE turma_professor (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_turma uuid NOT NULL REFERENCES turma(id) ON DELETE CASCADE,
-    id_professor uuid NOT NULL REFERENCES professor(id) ON DELETE CASCADE,
-    papel text DEFAULT 'RESPONSAVEL', -- opcional
-    UNIQUE (id_turma, id_professor)
-  );
+2. **Configure as variáveis de ambiente**
+```bash
+# Backend
+cp backend/.env.example backend/.env
 
-  -- AULA
-  CREATE TABLE aula (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_turma uuid NOT NULL REFERENCES turma(id) ON DELETE CASCADE,
-    titulo text,
-    conteudo text,
-    data_aula date NOT NULL,
-    hora_inicio time,
-    hora_fim time,
-    created_at timestamptz NOT NULL DEFAULT now()
-  );
-  CREATE INDEX idx_aula_turma_data ON aula(id_turma, data_aula);
+# Frontend (se necessário)
+cp frontend/.env.example frontend/.env
+```
 
-  -- PRESENCA
-  CREATE TABLE presenca (
-    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    id_aula uuid NOT NULL REFERENCES aula(id) ON DELETE CASCADE,
-    id_aluno uuid NOT NULL REFERENCES aluno(id) ON DELETE CASCADE,
-    status text NOT NULL CHECK (status IN ('PRESENTE','AUSENTE','ATRASO','JUSTIFICADA')),
-    observacao text,
-    marcado_em timestamptz NOT NULL DEFAULT now(),
-    UNIQUE (id_aula, id_aluno)
-  );
-  CREATE INDEX idx_presenca_aula ON presenca(id_aula);
+3. **Suba os containers**
+```bash
+docker-compose up -d
+```
 
+4. **Execute as migrations e seed**
+```bash
+# Migrations
+docker-compose exec backend npx prisma migrate deploy
 
-## 7) Endpoints (v1) – resumo
+# Seed (criar admin padrão e dados de exemplo)
+docker-compose exec backend npm run seed
+```
 
-  Auth
+5. **Acesse o sistema**
+- **Frontend**: http://localhost:8080
+- **Backend API**: http://localhost:3000
+- **Documentação API**: http://localhost:3000/api-docs
 
-  POST /api/v1/auth/register (ADMIN)
+#### Comandos úteis com Docker
 
-  POST /api/v1/auth/login
+```bash
+# Ver logs
+docker-compose logs -f
 
-  GET /api/v1/auth/me (JWT)
+# Parar containers
+docker-compose down
 
-  Usuários & Perfis
+# Parar e remover volumes (limpa banco de dados)
+docker-compose down -v
 
-  GET /api/v1/usuarios/:id
+# Reiniciar apenas um serviço
+docker-compose restart backend
+docker-compose restart frontend
+```
 
-  PATCH /api/v1/usuarios/:id (ADMIN)
+---
 
-  POST /api/v1/alunos / POST /api/v1/professores (cria perfil a partir de id_usuario)
+### Opção 2: Sem Docker
 
-Turmas
+#### Pré-requisitos
+- [Node.js 20+](https://nodejs.org/) instalado
+- [PostgreSQL 14+](https://www.postgresql.org/download/) instalado e rodando
+- [npm](https://www.npmjs.com/) ou [yarn](https://yarnpkg.com/)
 
-  POST /api/v1/turmas (ADMIN|GESTOR)
+#### Passos
 
-  GET /api/v1/turmas
+1. **Clone o repositório**
+```bash
+git clone <url-do-repositorio>
+cd chamadaWeb
+```
 
-  GET /api/v1/turmas/:id
+2. **Configure o PostgreSQL**
+```bash
+# Conecte ao PostgreSQL
+psql -U postgres
 
-  POST /api/v1/turmas/:id/alunos (matricular – cria TURMA_ALUNO)
+# Crie o banco de dados
+CREATE DATABASE chamadaweb;
+CREATE DATABASE chamadaweb_test; -- para testes
 
-  POST /api/v1/turmas/:id/professores
+# Saia do psql
+\q
+```
 
-Aulas
+3. **Configure o Backend**
+```bash
+cd backend
 
-  POST /api/v1/turmas/:id/aulas (PROFESSOR da turma | ADMIN)
+# Instale as dependências
+npm install
 
-  GET /api/v1/turmas/:id/aulas?de=YYYY-MM-DD&ate=YYYY-MM-DD
+# Configure as variáveis de ambiente
+cp .env.example .env
 
-  GET /api/v1/aulas/:id
+# Edite o .env com suas configurações
+# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/chamadaweb
+# JWT_SECRET=seu_secret_aqui
+# PORT=3000
+```
 
-Presenças
+4. **Execute as migrations e seed**
+```bash
+# Migrations
+npx prisma migrate deploy
 
-  POST /api/v1/aulas/:id/presencas (lista de marcações em batch)
+# Seed (criar admin padrão)
+npm run seed
+```
 
-  PATCH /api/v1/presencas/:id
+5. **Inicie o backend**
+```bash
+# Modo desenvolvimento
+npm run dev
 
-  GET /api/v1/aulas/:id/presencas
+# Modo produção
+npm run build
+npm start
+```
 
-  GET /api/v1/turmas/:id/presencas/relatorio?de&ate
+6. **Configure o Frontend**
+```bash
+# Em outro terminal
+cd frontend
 
-## 8) Segurança e Acesso
+# Instale as dependências
+npm install
 
-  JWT em Authorization: Bearer.
+# Configure as variáveis de ambiente (se necessário)
+cp .env.example .env
 
-  RBAC middleware: verifica req.user.role vs rota.
+# Inicie o frontend
+npm run dev
+```
 
-  Rate limit básico (ex.: 100 req/15min por IP).
+7. **Acesse o sistema**
+- **Frontend**: http://localhost:8080
+- **Backend API**: http://localhost:3000
 
-  Helmet + CORS configurados.
+#### Scripts úteis sem Docker
+
+```bash
+# Backend
+cd backend
+npm run dev          # Modo desenvolvimento com hot reload
+npm run build        # Build para produção
+npm start           # Roda versão de produção
+npm test            # Executa testes
+npm run seed        # Popula banco com dados iniciais
+npx prisma studio   # Interface visual do banco
+
+# Frontend
+cd frontend
+npm run dev         # Modo desenvolvimento
+npm run build       # Build para produção
+npm run preview     # Preview da build de produção
+```
+
+---
+
+## 🔑 Credenciais Padrão
+
+Após executar o seed, use estas credenciais para primeiro acesso:
+
+```
+Email: admin@teste.com
+Senha: admin123
+```
+
+**⚠️ IMPORTANTE:** 
+- Altere essas credenciais após o primeiro acesso
+- Crie novos usuários através da rota `/usuarios` (apenas ADMIN)
+- Nunca compartilhe suas credenciais
+
+---
+
+## 📂 Estrutura do Projeto
+
+```
+chamadaWeb/
+├── backend/                 # API Node.js
+│   ├── src/
+│   │   ├── controllers/    # Controladores
+│   │   ├── services/       # Lógica de negócio
+│   │   ├── repositories/   # Acesso a dados
+│   │   ├── routes/         # Rotas da API
+│   │   ├── middlewares/    # Auth, RBAC, validação
+│   │   ├── dtos/           # Data Transfer Objects
+│   │   ├── utils/          # Utilidades
+│   │   └── db/             # Prisma e seeds
+│   ├── prisma/
+│   │   └── schema.prisma   # Schema do banco
+│   ├── tests/              # Testes integrados
+│   └── .env.example        # Exemplo de variáveis
+│
+├── frontend/               # Aplicação React
+│   ├── src/
+│   │   ├── components/     # Componentes reutilizáveis
+│   │   ├── pages/          # Páginas da aplicação
+│   │   ├── services/       # Chamadas à API
+│   │   ├── hooks/          # React hooks customizados
+│   │   └── lib/            # Utilitários
+│   └── public/             # Arquivos estáticos
+│
+├── docker-compose.yml      # Orquestração Docker
+└── README.md              # Este arquivo
+```
+
+---
+
+## 🗂️ Entidades (MVP)
+
+1. **USUARIO** - Credenciais e perfis/roles
+2. **ALUNO** - Perfil de estudante
+3. **PROFESSOR** - Perfil de professor
+4. **TURMA** - Turmas do cursinho
+5. **AULA** - Aulas agendadas (data/hora/conteúdo)
+6. **TURMA_ALUNO** - Matrícula do aluno na turma
+7. **TURMA_PROFESSOR** - Alocação do professor na turma
+8. **PRESENCA** - Registro de presença por aula
+
+---
+
+## 📜 Regras de Negócio
+
+### Roles e Permissões
+
+- **ADMIN**: Acesso total, gerencia usuários, turmas, professores e alunos
+- **COORDENADOR**: Gerencia turmas, professores e alunos
+- **PROFESSOR**: Gerencia aulas e registra presenças
+
+### Regras Principais
+
+1. **AULA** só pode ser criada por PROFESSOR da turma ou ADMIN
+2. **PRESENCA**: valores `PRESENTE | AUSENTE | ATRASO | JUSTIFICADA` + timestamp
+3. **TURMA_ALUNO**: impede duplicidade (único por `id_turma + id_aluno`)
+4. **PRESENCA**: única por `id_aula + id_aluno`
+5. Apenas **ADMIN** pode acessar `/usuarios` e criar novos usuários
+
+---
+
+## 🛠️ Padrões e Tecnologias
+
+- **Arquitetura**: MVC expandida (Controllers → Services → Repositories)
+- **Autenticação**: JWT (HS256) + RBAC
+- **Validação**: Zod para DTOs
+- **Logs**: Pino
+- **Segurança**: Helmet + CORS
+- **Testes**: Vitest + Supertest
+- **Documentação**: OpenAPI 3.0
+
+---
+
+## 📡 Endpoints da API
+
+### Autenticação
+```
+POST   /api/v1/auth/register     # Criar usuário (ADMIN only)
+POST   /api/v1/auth/login        # Login
+GET    /api/v1/auth/me           # Dados do usuário autenticado
+```
+
+### Usuários
+```
+GET    /api/v1/usuarios          # Listar usuários (ADMIN)
+GET    /api/v1/usuarios/:id      # Obter usuário
+PUT    /api/v1/usuarios/:id      # Atualizar usuário (ADMIN)
+DELETE /api/v1/usuarios/:id      # Deletar usuário (ADMIN)
+```
+
+### Alunos
+```
+POST   /api/v1/alunos            # Criar perfil de aluno
+GET    /api/v1/alunos            # Listar alunos
+GET    /api/v1/alunos/:id        # Obter aluno
+PUT    /api/v1/alunos/:id        # Atualizar aluno
+DELETE /api/v1/alunos/:id        # Deletar aluno
+```
+
+### Professores
+```
+POST   /api/v1/professores       # Criar perfil de professor
+GET    /api/v1/professores       # Listar professores
+GET    /api/v1/professores/:id   # Obter professor
+PUT    /api/v1/professores/:id   # Atualizar professor
+DELETE /api/v1/professores/:id   # Deletar professor
+```
+
+### Turmas
+```
+POST   /api/v1/turmas                          # Criar turma (ADMIN|COORDENADOR)
+GET    /api/v1/turmas                          # Listar turmas
+GET    /api/v1/turmas/:id                      # Obter turma
+PUT    /api/v1/turmas/:id                      # Atualizar turma
+DELETE /api/v1/turmas/:id                      # Deletar turma
+POST   /api/v1/turmas/:id/alunos               # Matricular aluno
+DELETE /api/v1/turmas/:id/alunos/:idAluno      # Remover matrícula
+POST   /api/v1/turmas/:id/professores          # Vincular professor
+DELETE /api/v1/turmas/:id/professores/:idProf  # Remover vínculo
+```
+
+### Aulas
+```
+POST   /api/v1/turmas/:idTurma/aulas           # Criar aula (PROFESSOR|ADMIN)
+GET    /api/v1/turmas/:idTurma/aulas           # Listar aulas da turma
+GET    /api/v1/aulas/:id                       # Obter aula
+PUT    /api/v1/aulas/:id                       # Atualizar aula
+DELETE /api/v1/aulas/:id                       # Deletar aula
+```
+
+### Presenças
+```
+POST   /api/v1/aulas/:id/presencas             # Registrar presenças (batch)
+GET    /api/v1/aulas/:id/presencas             # Listar presenças da aula
+PATCH  /api/v1/presencas/:id                   # Atualizar presença
+```
+
+### Relatórios
+```
+GET    /api/v1/turmas/:id/presencas/relatorio?de=YYYY-MM-DD&ate=YYYY-MM-DD
+```
+
+---
+
+## 🔒 Segurança
+
+- **JWT** em `Authorization: Bearer <token>`
+- **RBAC**: Middleware verifica `req.user.role` vs permissões da rota
+- **Rate Limit**: 100 requisições por 15 minutos por IP
+- **Helmet**: Headers de segurança HTTP
+- **CORS**: Configurado para domínios permitidos
+- **Bcrypt**: Hash de senhas com salt
+
+---
+
+## 🧪 Testes
+
+```bash
+# Backend
+cd backend
+npm test              # Executar todos os testes
+npm run test:watch    # Modo watch
+npm run test:cov      # Coverage
+
+# Frontend
+cd frontend
+npm test
+```
+
+---
+
+## 📝 Licença
+
+Este projeto está sob a licença MIT.
+
+---
+
+## 👥 Contribuindo
+
+1. Fork o projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
+3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
+4. Push para a branch (`git push origin feature/AmazingFeature`)
+5. Abra um Pull Request
+
+---
+
+## 📞 Suporte
+
+Em caso de dúvidas ou problemas:
+- Abra uma [issue](https://github.com/seu-usuario/chamadaweb/issues)
+- Entre em contato: admin@cursinho.utfpr.edu.br
