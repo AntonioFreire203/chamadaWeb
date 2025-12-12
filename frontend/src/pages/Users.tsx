@@ -61,13 +61,15 @@ interface UserAPI {
 const roleLabels: Record<string, string> = {
   ADMIN: "Administrador",
   COORDENADOR: "Coordenador",
-  PROFESSOR: "Professor"
+  PROFESSOR: "Professor",
+  ALUNO: "Aluno"
 };
 
 const roleColors: Record<string, string> = {
   ADMIN: "bg-red-500",
   COORDENADOR: "bg-purple-500",
-  PROFESSOR: "bg-blue-500"
+  PROFESSOR: "bg-blue-500",
+  ALUNO: "bg-green-500"
 };
 
 const Users = () => {

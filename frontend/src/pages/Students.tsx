@@ -133,6 +133,7 @@ const Students = () => {
       const authData = await authRes.json();
       if (!authRes.ok) throw new Error(authData.message || "Erro ao criar usuário");
 
+      // Criar perfil de aluno com data de nascimento
       const alunoRes = await fetch("/api/v1/alunos", {
         method: "POST",
         headers: { 
@@ -145,7 +146,13 @@ const Students = () => {
         })
       });
 
-      if (!alunoRes.ok) throw new Error("Erro ao criar perfil de aluno");
+      // Se retornar 409, significa que o perfil já foi criado automaticamente (tudo ok)
+      if (alunoRes.status === 409) {
+        console.log("Perfil de aluno já existe - criado automaticamente pelo backend");
+      } else if (!alunoRes.ok) {
+        const alunoData = await alunoRes.json();
+        throw new Error(alunoData.message || "Erro ao criar perfil de aluno");
+      }
 
       toast({ title: "Sucesso", description: "Estudante cadastrado com sucesso!" });
       setIsCreateOpen(false);
