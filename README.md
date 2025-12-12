@@ -85,7 +85,7 @@ cp frontend/.env.example frontend/.env
 
 3. **Suba os containers**
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
 4. **Execute as migrations e seed**

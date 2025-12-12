@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   db:
     image: postgres:15
@@ -6,7 +5,60 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_USER: postgres
       POSTGRES_DB: chamadaweb
-    ports: ["5432:5432"]
-    volumes: [ "db_data:/var/lib/postgresql/data" ]
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chamadaweb-network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/chamadaweb
+      JWT_SECRET: seu_jwt_secret_aqui_altere_em_producao
+      PORT: 3000
+      NODE_ENV: development
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - chamadaweb-network
+    command: npm run dev
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      DOCKER_ENV: "true"
+      VITE_API_URL: http://backend:3000
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - chamadaweb-network
+    command: npm run dev
+
 volumes:
   db_data:
+
+networks:
+  chamadaweb-network:
+    driver: bridge
