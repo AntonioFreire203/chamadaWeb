@@ -44,6 +44,22 @@ interface Aula {
   createdAt: string;
 }
 
+interface Presenca {
+  id: string;
+  idAluno: string;
+  idAula: string;
+  presente: boolean;
+  createdAt: string;
+  aluno: {
+    nome: string;
+    matricula: string;
+  };
+  aula: {
+    titulo: string;
+    dataAula: string;
+  };
+}
+
 const History = () => {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
@@ -52,8 +68,9 @@ const History = () => {
   const [loading, setLoading] = useState(true)
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [aulas, setAulas] = useState<Aula[]>([])
+  const [presencas, setPresencas] = useState<Presenca[]>([])
 
-  // Buscar turmas e aulas
+  // Buscar turmas, aulas e presenças
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -88,6 +105,17 @@ const History = () => {
         const todasAulas = aulasArrays.flat();
         setAulas(todasAulas);
 
+        // Buscar presenças de todas as aulas
+        const presencasPromises = todasAulas.map((aula: Aula) =>
+          fetch(`/api/v1/aulas/${aula.id}/presencas`, { headers })
+            .then(res => res.ok ? res.json() : [])
+            .catch(() => [])
+        );
+
+        const presencasArrays = await Promise.all(presencasPromises);
+        const todasPresencas = presencasArrays.flat();
+        setPresencas(todasPresencas);
+
       } catch (error) {
         console.error(error);
         toast({ variant: "destructive", title: "Erro", description: "Erro ao carregar histórico." });
@@ -100,7 +128,7 @@ const History = () => {
   }, []);
 
   // Converter aulas em formato de histórico
-  const historyData = aulas
+  const aulasHistory = aulas
     .filter(aula => aula.turma) // Filtrar aulas que têm turma associada
     .map(aula => ({
       id: aula.id,
@@ -118,7 +146,28 @@ const History = () => {
         description: aula.conteudo 
       },
       status: "completed"
-    })).sort((a, b) => {
+    }))
+
+  // Converter presenças em formato de histórico
+  const presencasHistory = presencas.map(presenca => ({
+    id: presenca.id,
+    type: "attendance",
+    title: presenca.presente ? "Presença registrada" : "Falta registrada",
+    description: `${presenca.aluno?.nome || 'Aluno'} - ${presenca.aula?.titulo || 'Aula'}`,
+    date: new Date(presenca.createdAt).toLocaleDateString('pt-BR'),
+    time: new Date(presenca.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    user: presenca.aluno?.nome || 'Aluno',
+    details: { 
+      student: presenca.aluno?.nome,
+      matricula: presenca.aluno?.matricula,
+      class: presenca.aula?.titulo,
+      presente: presenca.presente
+    },
+    status: presenca.presente ? "completed" : "cancelled"
+  }))
+
+  // Combinar histórico de aulas e presenças
+  const historyData = [...aulasHistory, ...presencasHistory].sort((a, b) => {
     // Ordenar do mais recente para o mais antigo
     const dateA = new Date(a.date.split('/').reverse().join('-'));
     const dateB = new Date(b.date.split('/').reverse().join('-'));

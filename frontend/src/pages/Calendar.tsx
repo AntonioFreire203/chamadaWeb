@@ -28,7 +28,9 @@ import {
   Clock,
   MapPin,
   Users,
-  Loader2
+  Loader2,
+  Edit,
+  Trash2
 } from "lucide-react"
 import { apiUrl, getAuthHeaders } from "@/services/api"
 import { useToast } from "@/hooks/use-toast"
@@ -56,13 +58,26 @@ interface Aula {
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [turmas, setTurmas] = useState<Turma[]>([])
   const [aulas, setAulas] = useState<Aula[]>([])
   const [loading, setLoading] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [updating, setUpdating] = useState(false)
+  const [editingAula, setEditingAula] = useState<Aula | null>(null)
   const { toast } = useToast()
   
   const [newAula, setNewAula] = useState({
+    idTurma: "",
+    titulo: "",
+    conteudo: "",
+    dataAula: "",
+    horaInicio: "",
+    horaFim: ""
+  })
+
+  const [editAula, setEditAula] = useState({
+    id: "",
     idTurma: "",
     titulo: "",
     conteudo: "",
@@ -139,6 +154,31 @@ const Calendar = () => {
     }
   }
 
+  const handleOpenEditModal = (aula: Aula) => {
+    // Formatar a data para o input date (YYYY-MM-DD)
+    const dataFormatada = new Date(aula.dataAula).toISOString().split('T')[0]
+    
+    // Formatar as horas para o input time (HH:MM)
+    const horaInicioFormatada = aula.horaInicio 
+      ? new Date(aula.horaInicio).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : ""
+    const horaFimFormatada = aula.horaFim 
+      ? new Date(aula.horaFim).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      : ""
+
+    setEditAula({
+      id: aula.id,
+      idTurma: aula.idTurma,
+      titulo: aula.titulo,
+      conteudo: aula.conteudo || "",
+      dataAula: dataFormatada,
+      horaInicio: horaInicioFormatada,
+      horaFim: horaFimFormatada
+    })
+    setEditingAula(aula)
+    setShowEditModal(true)
+  }
+
   const handleCreateAula = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -206,12 +246,76 @@ const Calendar = () => {
     }
   }
 
+  const handleUpdateAula = async (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!editAula.idTurma || !editAula.titulo || !editAula.dataAula) {
+      toast({
+        title: "Erro",
+        description: "Preencha todos os campos obrigatórios",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      setUpdating(true)
+      
+      // Preparar dados
+      const aulaData = {
+        titulo: editAula.titulo,
+        conteudo: editAula.conteudo || undefined,
+        dataAula: new Date(editAula.dataAula).toISOString(),
+        horaInicio: editAula.horaInicio ? new Date(`${editAula.dataAula}T${editAula.horaInicio}`).toISOString() : undefined,
+        horaFim: editAula.horaFim ? new Date(`${editAula.dataAula}T${editAula.horaFim}`).toISOString() : undefined,
+      }
+
+      const response = await fetch(`${apiUrl}/aulas/${editAula.id}`, {
+        method: "PUT",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(aulaData),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Sucesso!",
+          description: "Aula atualizada com sucesso",
+        })
+        
+        setShowEditModal(false)
+        setEditingAula(null)
+        loadAulas()
+      } else {
+        const error = await response.json()
+        toast({
+          title: "Erro",
+          description: error.mensagem || "Erro ao atualizar aula",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error("Erro ao atualizar aula:", error)
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar aula",
+        variant: "destructive",
+      })
+    } finally {
+      setUpdating(false)
+    }
+  }
+
   const getAulasForDay = (day: number) => {
     return aulas.filter(aula => {
+      // Usar UTC para evitar problemas de timezone
       const aulaDate = new Date(aula.dataAula)
-      return aulaDate.getDate() === day && 
-             aulaDate.getMonth() === currentMonth && 
-             aulaDate.getFullYear() === currentYear
+      const aulaDay = aulaDate.getUTCDate()
+      const aulaMonth = aulaDate.getUTCMonth()
+      const aulaYear = aulaDate.getUTCFullYear()
+      
+      return aulaDay === day && 
+             aulaMonth === currentMonth && 
+             aulaYear === currentYear
     })
   }
 
@@ -306,10 +410,12 @@ const Calendar = () => {
                           {dayAulas.slice(0, 3).map((aula) => (
                             <div
                               key={aula.id}
-                              className="text-xs p-1 rounded border bg-primary/10 text-primary border-primary/20 truncate"
+                              className="text-xs p-1 rounded border bg-primary/10 text-primary border-primary/20 truncate group flex items-center justify-between hover:bg-primary/20 transition-colors cursor-pointer"
                               title={`${aula.titulo} - ${aula.turma?.nome}`}
+                              onClick={() => handleOpenEditModal(aula)}
                             >
-                              {aula.titulo}
+                              <span className="truncate flex-1">{aula.titulo}</span>
+                              <Edit className="h-3 w-3 opacity-0 group-hover:opacity-100 flex-shrink-0 ml-1" />
                             </div>
                           ))}
                           {dayAulas.length > 3 && (
@@ -340,16 +446,28 @@ const Calendar = () => {
             <CardContent className="space-y-3">
               {getAulasForDay(new Date().getDate()).length > 0 ? (
                 getAulasForDay(new Date().getDate()).map((aula) => (
-                  <div key={aula.id} className="p-3 rounded-lg border border-border">
-                    <h4 className="font-medium text-foreground text-sm">{aula.titulo}</h4>
-                    <p className="text-xs text-muted-foreground mt-1">{aula.turma?.nome}</p>
-                    <div className="space-y-1 mt-2">
-                      {(aula.horaInicio || aula.horaFim) && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {formatTime(aula.horaInicio)} - {formatTime(aula.horaFim)}
+                  <div key={aula.id} className="p-3 rounded-lg border border-border group hover:border-primary transition-colors">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="font-medium text-foreground text-sm">{aula.titulo}</h4>
+                        <p className="text-xs text-muted-foreground mt-1">{aula.turma?.nome}</p>
+                        <div className="space-y-1 mt-2">
+                          {(aula.horaInicio || aula.horaFim) && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              {formatTime(aula.horaInicio)} - {formatTime(aula.horaFim)}
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100"
+                        onClick={() => handleOpenEditModal(aula)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 ))
@@ -462,6 +580,117 @@ const Calendar = () => {
                   </>
                 ) : (
                   'Criar Aula'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Aula Dialog */}
+      <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Editar Aula</DialogTitle>
+            <DialogDescription>
+              Atualize as informações da aula
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleUpdateAula} className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-turma">Turma *</Label>
+              <Select
+                value={editAula.idTurma}
+                onValueChange={(value) => setEditAula({ ...editAula, idTurma: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma turma" />
+                </SelectTrigger>
+                <SelectContent>
+                  {turmas.map((turma) => (
+                    <SelectItem key={turma.id} value={turma.id}>
+                      {turma.nome} {turma.codigo ? `(${turma.codigo})` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-titulo">Título *</Label>
+              <Input
+                id="edit-titulo"
+                value={editAula.titulo}
+                onChange={(e) => setEditAula({ ...editAula, titulo: e.target.value })}
+                placeholder="Ex: Álgebra Linear"
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-conteudo">Conteúdo</Label>
+              <Textarea
+                id="edit-conteudo"
+                value={editAula.conteudo}
+                onChange={(e) => setEditAula({ ...editAula, conteudo: e.target.value })}
+                placeholder="Descrição do conteúdo da aula"
+                rows={3}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-dataAula">Data *</Label>
+              <Input
+                id="edit-dataAula"
+                type="date"
+                value={editAula.dataAula}
+                onChange={(e) => setEditAula({ ...editAula, dataAula: e.target.value })}
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-horaInicio">Hora Início</Label>
+                <Input
+                  id="edit-horaInicio"
+                  type="time"
+                  value={editAula.horaInicio}
+                  onChange={(e) => setEditAula({ ...editAula, horaInicio: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-horaFim">Hora Fim</Label>
+                <Input
+                  id="edit-horaFim"
+                  type="time"
+                  value={editAula.horaFim}
+                  onChange={(e) => setEditAula({ ...editAula, horaFim: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setShowEditModal(false)
+                  setEditingAula(null)
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={updating}>
+                {updating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Atualizando...
+                  </>
+                ) : (
+                  'Atualizar Aula'
                 )}
               </Button>
             </DialogFooter>

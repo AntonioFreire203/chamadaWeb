@@ -91,7 +91,7 @@ docker compose up -d
 4. **Execute as migrations e seed**
 ```bash
 # Migrations
-docker-compose exec backend npx prisma migrate deploy
+docker compose exec backend npx prisma migrate deploy
 
 # Seed (criar admin padrão e dados de exemplo)
 docker-compose exec backend npm run seed
