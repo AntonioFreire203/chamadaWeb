@@ -94,7 +94,7 @@ docker compose up -d
 docker compose exec backend npx prisma migrate deploy
 
 # Seed (criar admin padrão e dados de exemplo)
-docker-compose exec backend npm run seed
+docker compose exec backend npm run seed
 ```
 
 5. **Acesse o sistema**
@@ -106,17 +106,17 @@ docker-compose exec backend npm run seed
 
 ```bash
 # Ver logs
-docker-compose logs -f
+docker compose logs -f
 
 # Parar containers
-docker-compose down
+docker compose down
 
 # Parar e remover volumes (limpa banco de dados)
-docker-compose down -v
+docker compose down -v
 
 # Reiniciar apenas um serviço
-docker-compose restart backend
-docker-compose restart frontend
+docker compose restart backend
+docker compose restart frontend
 ```
 
 ---
